@@ -103,8 +103,8 @@ class _ChickenBuyDialogState extends State<ChickenBuyDialog> {
         count: double.parse(ctlList[3].text),
         createOn: widget.time);
 
-    dto.setPrice(
-        widget.priceManager.getTotalPrice(double.parse(ctlList[2].text), floatRound));
+    // dto.setPrice(
+    //     widget.priceManager.getTotalPrice(double.parse(ctlList[2].text), floatRound));floatRound
 
     dto.setTotal();
 

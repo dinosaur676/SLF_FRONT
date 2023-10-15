@@ -2,10 +2,12 @@ import 'dart:js_interop';
 
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
 import 'package:slf_front/manager/price_manager.dart';
+import 'package:slf_front/model/company.dart';
 import 'package:slf_front/model/dto/price_dto.dart';
 import 'package:slf_front/util/param_util.dart';
 
@@ -16,49 +18,146 @@ class PricePage extends StatefulWidget {
   State<PricePage> createState() => _PricePageState();
 }
 
-class _PricePageState extends State<PricePage> {
-  List<String> labels = ["시세", "상하차비", "제비용"];
-  List<TextEditingController> ctlList = [];
+enum TextFormType {
+  search("찾기", 0),
+  marketPrice("시세", 1),
+  loadingPrice("상하차비", 2),
+  lotPrice("제비용", 3);
 
-  late PriceManager _priceManager;
-  late DateManager _dateManager;
+  const TextFormType(this.label, this.pos);
+  final String label;
+  final int pos;
+}
+
+class _PricePageState extends State<PricePage> {
+
+
+  List test = [1, 2, 3];
+  List<TextFormType> types = [TextFormType.marketPrice, TextFormType.loadingPrice, TextFormType.lotPrice, TextFormType.search];
+  late Map<int, TextEditingController> ctlList = { for (var element in types) element.pos : TextEditingController() };
+
+
+  String currentSelectDate = "";
+  String selectedCompany = "";
 
   @override
   Widget build(BuildContext context) {
-    _priceManager = Provider.of<PriceManager>(context, listen: false);
-    _dateManager = Provider.of<DateManager>(context, listen: true);
-    return FutureBuilder(
-        future: getData(),
-        builder: (context, snapshot) {
-          if(snapshot.connectionState != ConnectionState.done) {
-            return CircularProgressIndicator();
-          }
-          return body();
-        });
+    return Row(
+      children: [
+        Expanded(
+          flex: 2,
+          child: selectCompanyListView(),
+        ),
+        Expanded(
+          flex: 8,
+          child: FutureBuilder(
+              future: getPriceData(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState != ConnectionState.done) {
+                  return CircularProgressIndicator();
+                }
+                return body();
+              }),
+        ),
+      ],
+    );
   }
 
-  Future<void> getData() async {
-
-    dynamic result = await GetIt.instance.get<APIManager>().GET(APIManager.URI_PRICE, PriceParam.getInfo(_dateManager.selectTime));
-
-    _priceManager.marketPrice = result["marketPrice"];
-    _priceManager.loadingCost = result["loadingPrice"];
-    _priceManager.lotCost = result["lotPrice"];
-
+  Future<void> getPriceData() async {
     return;
+  }
+
+  Future<List> getCompanyListData() async {
+    return [
+      {"id": 1, "name": "a"},
+      {"id": 2, "name": "b"},
+      {"id": 3, "name": "c"},
+    ];
+  }
+
+  Widget selectCompanyListView() {
+    return FutureBuilder(
+        future: getCompanyListData(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState != ConnectionState.done) {
+            return const CircularProgressIndicator();
+          }
+
+          List<Company> companyList =
+              snapshot.data!.map((e) => Company(e["id"], e["name"])).toList();
+
+          return Container(
+            decoration: BoxDecoration(
+                border: Border.all(
+              color: Colors.black,
+              width: 1,
+            )),
+            child: Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Row(
+                    children: [
+                      Expanded(child: TextFormField()),
+                      IconButton(onPressed: () {}, icon: const Icon(Icons.search)),
+                      ElevatedButton(
+                        onPressed: () {},
+                        child: const Text("추가"),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: ListView.builder(
+                    scrollDirection: Axis.vertical,
+                    itemCount: companyList.length,
+                    itemBuilder: (context, index) {
+                      Color color = Colors.white;
+                      if(selectedCompany == companyList[index].name) {
+                        color = Colors.grey;
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: color
+                          ),
+                          child: Center(
+                            child: Text(
+                              companyList[index].name,
+                              style: const TextStyle(
+                                  fontSize: 20.0,
+                                  fontWeight: FontWeight.w300,
+                                  color: Colors.black),
+                            ),
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
   }
 
   Widget body() {
     return FractionallySizedBox(
-      widthFactor: 0.3,
-      child: Center(
+      widthFactor: 0.4,
+      child: Container(
+        color: Colors.yellow,
         child: Column(
           children: [
             Container(
               decoration:
                   BoxDecoration(border: Border.all(color: Colors.black)),
               child: Column(
-                children: [...labels.map((e) => getInput(e))],
+                children: [
+                  getDatePicker(),
+                  ...labels.map((e) => getInput(e)),
+                ],
               ),
             ),
             const SizedBox(
@@ -87,14 +186,81 @@ class _PricePageState extends State<PricePage> {
   }
 
   void onPressedAsync() async {
-    PriceDto dto = PriceDto(int.parse(ctlList[0].text), int.parse(ctlList[1].text), int.parse(ctlList[2].text), _dateManager.selectTime);
+    PriceDto dto = PriceDto(
+        int.parse(ctlList[0].text),
+        int.parse(ctlList[1].text),
+        int.parse(ctlList[2].text),
+        currentSelectDate);
 
-    await GetIt.instance.get<APIManager>().PUT(APIManager.URI_PRICE, PriceParam.insert(dto));
+    await GetIt.instance
+        .get<APIManager>()
+        .PUT(APIManager.URI_PRICE, PriceParam.insert(dto));
 
     setState(() {
       ctlList.map((e) => e.dispose());
       ctlList.clear();
     });
+  }
+
+  Widget getDatePicker() {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: [
+          const Expanded(
+            flex: 2,
+            child: Padding(
+              padding: EdgeInsets.only(right: 16.0),
+              child: Text(
+                "날짜",
+                textAlign: TextAlign.end,
+                style: TextStyle(
+                    fontSize: 20.0,
+                    fontWeight: FontWeight.w300,
+                    color: Colors.black),
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 8,
+            child: Row(
+              children: [
+                Text(
+                  currentSelectDate,
+                  style: const TextStyle(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.w300,
+                      color: Colors.black),
+                ),
+                const SizedBox(
+                  width: 16.0,
+                ),
+                IconButton(
+                    onPressed: () => onSelectDate(),
+                    icon: const Icon(Icons.date_range))
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void onSelectDate() async {
+    final DateTime? selected = await showDatePicker(
+      context: context,
+      initialDate: currentSelectDate == ""
+          ? DateTime.now()
+          : DateTime.parse(currentSelectDate),
+      firstDate: DateTime(1900),
+      lastDate: DateTime.now().add(const Duration(days: 100)),
+    );
+
+    if (selected != null) {
+      setState(() {
+        currentSelectDate = DateFormat("yyyy-MM-dd").format(selected);
+      });
+    }
   }
 
   Widget getInfo() {
@@ -104,9 +270,9 @@ class _PricePageState extends State<PricePage> {
       ),
       child: Column(
         children: [
-          getLabelText("시세", _priceManager.marketPrice.toString()),
-          getLabelText("상하차비", _priceManager.loadingCost.toString()),
-          getLabelText("제비용", _priceManager.lotCost.toString()),
+          getLabelText("시세", "0"),
+          getLabelText("상하차비", "0"),
+          getLabelText("제비용", "0"),
         ],
       ),
     );
