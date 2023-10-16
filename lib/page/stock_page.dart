@@ -1,4 +1,3 @@
-import 'dart:js_interop';
 
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -8,7 +7,6 @@ import 'package:provider/provider.dart';
 import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/manager/chicken_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
-import 'package:slf_front/model/dto/request_dto.dart';
 import 'package:slf_front/util/chicken_parts.dart';
 import 'package:slf_front/util/param_keys.dart';
 import 'package:slf_front/util/param_util.dart';
@@ -174,8 +172,8 @@ class _StockPageState extends State<StockPage> {
           APIManager.URI_CHICKEN,
           ChickenParam.addItemParam(
               event[ParamKeys.MAIN_KEY],
-              event[ParamKeys.SUB_KEY],
-              event[ParamKeys.DATA]));
+              event[ParamKeys.SUB_KEY])
+      );
     }
 
     Fluttertoast.showToast(msg: "적용 완료", gravity: ToastGravity.CENTER);
@@ -255,29 +253,20 @@ class _StockPageState extends State<StockPage> {
           if (partKeyList.contains(e.key)) {
             return getAPIMap(
                 e.key,
-                ChickenParts.CREATE,
-                RequestDto(
-                    name: "재고",
-                    count: e.value,
-                    createOn: stockDay));
+                ChickenParts.CREATE);
           }
 
           return getAPIMap(
               ChickenParts.BUY,
-              ChickenParts.BUY,
-              RequestDto(
-                  name: "${"재고 / ${e.key as String}"}호",
-                  count: e.value,
-                  createOn: stockDay));
+              ChickenParts.BUY);
         }).toList();
   }
 
-  Map getAPIMap(String mainKey, String subKey, RequestDto dto) {
+  Map getAPIMap(String mainKey, String subKey) {
     Map map = {};
 
     map[ParamKeys.MAIN_KEY] = mainKey;
     map[ParamKeys.SUB_KEY] = subKey;
-    map[ParamKeys.DATA] = dto;
 
     return map;
   }

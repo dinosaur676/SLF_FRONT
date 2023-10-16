@@ -6,12 +6,11 @@ import 'package:slf_front/manager/buy_manager.dart';
 import 'package:slf_front/manager/chicken_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
 import 'package:slf_front/manager/price_manager.dart';
-import 'package:slf_front/model/dto/request_dto.dart';
+import 'package:slf_front/model/company.dart';
 import 'package:slf_front/util/chicken_parts.dart';
+import 'package:slf_front/util/constant.dart';
 import 'package:slf_front/util/param_util.dart';
-import 'package:slf_front/widget/chicken/buy/buy_add_dialog.dart';
-import 'package:slf_front/widget/chicken/buy/buy_work_dialog.dart';
-import 'package:slf_front/widget/chicken/sell/add_dialog.dart';
+import 'package:slf_front/widget/buy/dialog/buy_add_dialog.dart';
 
 class BuyWidget extends StatefulWidget {
   const BuyWidget({
@@ -34,8 +33,7 @@ class _BuyWidgetState extends State<BuyWidget> {
   List sellList = [];
   List createList = [];
 
-  List<String> createColumn = ["구매 호수", "수량", "단가", "소계"];
-  List<String> sellColumn = ["생산처", "작업량", "작업비"];
+  List<String> createColumn = ["구매처", "구매일자", "호수", "수량", "단가", "소계", "작업 여부"];
 
   late ChickenManager _chickenManager;
   late DateManager _dateManager;
@@ -57,15 +55,11 @@ class _BuyWidgetState extends State<BuyWidget> {
         Container(
           color: Colors.grey[300],
           child: Padding(
-            padding: EdgeInsets.symmetric(vertical: 8.0),
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
             child: Text(
               title,
               textAlign: TextAlign.center,
-              style: TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 28.0,
-                color: Colors.black,
-              ),
+              style: StyleConstant.textStyle,
             ),
           ),
         ),
@@ -103,131 +97,38 @@ class _BuyWidgetState extends State<BuyWidget> {
   }
 
   Future<void> updateNewData() async {
-    createList = await getAPIManager().POST(
-        APIManager.URI_CHICKEN,
-        ChickenParam.getInfoParam(
-            mainKey, ChickenParts.BUY, _dateManager.selectTime));
-
-    sellList = await getAPIManager().POST(
-        APIManager.URI_CHICKEN,
-        ChickenParam.getInfoParam(
-            mainKey, ChickenParts.WORK, _dateManager.selectTime));
-
-    _chickenManager.totalMap[ChickenParts.BUY] = getTotalSum(createList, "total");
-    _chickenManager.totalMap[ChickenParts.WORK] = getTotalSum(sellList, "total");
-    _chickenManager.tableStockMap[ChickenParts.BUY] = getTotalSum(createList, "count").toInt();
-    _chickenManager.tableStockMap[ChickenParts.WORK] = getTotalSum(sellList, "count").toInt();
-
-    _chickenManager.tableStockMap[ChickenParts.BUY_KG] = createList.fold(0.0, (sum, element) {
-      String name = getHo(element["name"]);
-      double kg = element["count"] * (double.parse(name) / 10);
-
-      return sum + kg;
-    });
-
-
-    for (var element in createList) {
-      String name = getHo(element["name"]);
-      if(name == null) {
-        continue;
-      }
-
-      _chickenManager.stockMap[name] = 0;
-    }
-
-    for (var element in createList) {
-      String name = getHo(element["name"]);
-      if(name == null) {
-        continue;
-      }
-
-      if(_chickenManager.stockMap[name] == null) {
-        _chickenManager.stockMap[name] = 0;
-      }
-
-      _chickenManager.stockMap[name] += element["count"];
-    }
-
-    _chickenManager.tableStockMap[ChickenParts.SELL_KG] = sellList.fold(0.0, (sum, element) {
-      String name = getHo(element["name"]);
-
-      double kg = element["count"] * (double.parse(name) / 10);
-
-      return sum + kg;
-    });
-
-    for (var element in sellList) {
-      String name = getHo(element["name"]);
-      if(name == null) {
-        continue;
-      }
-
-      if(_chickenManager.stockMap[name] == null) {
-        _chickenManager.stockMap[name] = 0;
-      }
-
-      _chickenManager.stockMap[name] -= element["count"];
-    }
-
-    _chickenManager.stockMap[ChickenParts.CHICKEN] = _chickenManager.tableStockMap[ChickenParts.BUY] - _chickenManager.tableStockMap[ChickenParts.WORK];
-    _chickenManager.totalMap[ChickenManager.TOTAL_BUY] = _chickenManager.totalMap[ChickenParts.BUY] + _chickenManager.totalMap[ChickenParts.WORK];
-
-    _chickenManager.updateView();
-
     return;
   }
+
   double getTotalSum(List list, String parameterName) {
-    return  list.fold(0, (sum, element) => sum + (element[parameterName] as double));
+    return list.fold(
+        0, (sum, element) => sum + (element[parameterName] as double));
   }
-
-  String getHo(String name) {
-    int pos = name.lastIndexOf("/ ");
-    name = name.substring(pos, name.length);
-    name = name.replaceAll("/ ", "");
-    name = name.replaceAll("호", "");
-
-    return name;
-  }
-
 
   void onTopPressed() async {
     isOpen = !isOpen;
-
-    onSetState();
   }
 
   void onCreateAddPressed() async {
-    dynamic result = await showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return ChickenBuyDialog(
-              time: _dateManager.selectTime, priceManager: _priceManager);
-        });
 
-    if (result != null) {
-      await getAPIManager().PUT(APIManager.URI_CHICKEN,
-          ChickenParam.addItemParam(mainKey, ChickenParts.BUY, result));
-    }
+    List companyData = await GetIt.instance.get<APIManager>().GET(
+      APIManager.URI_COMPANY,
+      {"name": ""},
+    ) as List;
 
-    onSetState();
-  }
+    List<Company> companyList = companyData.map((e) => Company(e["id"], e["name"])).toList();
 
-  void onSellAddPressed() async {
-    dynamic result = await showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return ChickenWorkDialog(time: _dateManager.selectTime,  chickenManager: _chickenManager);
-        });
+    if(!mounted) return; //위젯이 마운트되지 않으면 async뒤에 context를 썼을 때 그 안에 아무런 값도 들어있지 않을 수 있어서다.
+
+    final result = await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return BuyAddDialog(companyList: companyList);
+      },
+    );
 
 
-    if (result != null) {
-      (result as RequestDto).clearTotal();
-
-      await getAPIManager().PUT(APIManager.URI_CHICKEN,
-          ChickenParam.addItemParam(mainKey, ChickenParts.WORK, result));
-    }
-
-    onSetState();
+    setState(() {});
   }
 
   void onSetState() {
@@ -241,27 +142,14 @@ class _BuyWidgetState extends State<BuyWidget> {
         Expanded(
           child: Padding(
             padding: const EdgeInsets.only(left: 8.0),
-            child: _CreateTable(
+            child: _BuyTable(
               onCreateAddPressed: onCreateAddPressed,
               column: createColumn,
-              mainKey: mainKey,
               createList: createList,
               onSetState: onSetState,
             ),
           ),
         ),
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: _SellTable(
-              onSellAddPressed: onSellAddPressed,
-              column: sellColumn,
-              mainKey: mainKey,
-              sellList: sellList,
-              onSetState: onSetState,
-            ),
-          ),
-        )
       ],
     );
   }
@@ -271,99 +159,16 @@ class _BuyWidgetState extends State<BuyWidget> {
   }
 }
 
-class _SellTable extends StatelessWidget {
-  final List<String> column;
-  final List sellList;
-  final VoidCallback onSellAddPressed;
-  final String mainKey;
-  final VoidCallback onSetState;
-
-  _SellTable(
-      {Key? key,
-      required this.onSellAddPressed,
-      required this.column,
-      required this.sellList,
-      required this.mainKey,
-      required this.onSetState})
-      : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        DataTable(
-            border: const TableBorder(
-                top: BorderSide(width: 2),
-                right: BorderSide(width: 2),
-                bottom: BorderSide(width: 2),
-                left: BorderSide(width: 1),
-                verticalInside: BorderSide(width: 0.5)),
-            columns: createColumn(),
-            rows: createRows()),
-        Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [addButton()],
-          ),
-        )
-      ],
-    );
-  }
-
-  Widget addButton() {
-    return ElevatedButton(
-      style: ElevatedButton.styleFrom(
-          shape: CircleBorder(
-              side: BorderSide(width: 1.0, color: Colors.lightGreen)),
-          backgroundColor: Colors.lightGreen),
-      onPressed: onSellAddPressed,
-      child: Icon(Icons.add),
-    );
-  }
-
-  List<DataColumn> createColumn() {
-    return column
-        .map((e) => DataColumn(
-                label: Text(
-              e,
-              style: TextStyle(fontWeight: FontWeight.w700),
-            )))
-        .toList();
-  }
-
-  List<DataRow> createRows() {
-    return sellList.map((e) {
-      return DataRow(
-        onLongPress: () {
-          GetIt.instance.get<APIManager>().DELETE(
-              APIManager.URI_CHICKEN, ChickenParam.deleteItemParam(e["id"]));
-
-          onSetState();
-        },
-        cells: [
-          DataCell(Text(e["name"])),
-          DataCell(Text(e["count"].toString())),
-          DataCell(Text(e["price"].toString())),
-        ],
-      );
-    }).toList();
-  }
-}
-
-class _CreateTable extends StatelessWidget {
+class _BuyTable extends StatelessWidget {
   final List createList;
   final List<String> column;
   final VoidCallback onCreateAddPressed;
   final VoidCallback onSetState;
-  final String mainKey;
 
-  _CreateTable(
+  const _BuyTable(
       {Key? key,
       required this.onCreateAddPressed,
       required this.column,
-      required this.mainKey,
       required this.createList,
       required this.onSetState})
       : super(key: key);
@@ -396,21 +201,25 @@ class _CreateTable extends StatelessWidget {
   Widget addButton() {
     return ElevatedButton(
       style: ElevatedButton.styleFrom(
-          shape: CircleBorder(
-              side: BorderSide(width: 1.0, color: Colors.lightGreen)),
+          shape: const CircleBorder(
+            side: BorderSide(width: 1.0, color: Colors.lightGreen),
+          ),
           backgroundColor: Colors.lightGreen),
       onPressed: onCreateAddPressed,
-      child: Icon(Icons.add),
+      child: const Icon(Icons.add),
     );
   }
 
   List<DataColumn> createColumn() {
     return column
-        .map((e) => DataColumn(
-                label: Text(
+        .map(
+          (e) => DataColumn(
+            label: Text(
               e,
-              style: TextStyle(fontWeight: FontWeight.w700),
-            )))
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+        )
         .toList();
   }
 
@@ -466,14 +275,13 @@ class _Top extends StatelessWidget {
           IntrinsicHeight(
             child: Row(
               children: [
-                Expanded (
+                Expanded(
                   flex: 2,
                   child: Row(
                     children: [
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.lightGreen
-                        ),
+                            backgroundColor: Colors.lightGreen),
                         onPressed: onFinish,
                         child: const Text(
                           "적용",
@@ -540,16 +348,19 @@ class _Top extends StatelessWidget {
   }
 
   void onFinish() async {
-    List chickenPartList = [ChickenParts.WING, ChickenParts.BREAST_SO, ChickenParts.LEG, ChickenParts.TENDER];
+    List chickenPartList = [
+      ChickenParts.WING,
+      ChickenParts.BREAST_SO,
+      ChickenParts.LEG,
+      ChickenParts.TENDER
+    ];
     List chickenMulList = [0.1, 0.22, 0.3, 0.042];
 
-    for(int i = 0; i < chickenPartList.length; ++i) {
-      await GetIt.instance.get<APIManager>().PUT(APIManager.URI_CHICKEN, ChickenParam.addItemParam(chickenPartList[i], ChickenParts.CREATE,
-          RequestDto(name: "이푸드", count: _chickenManager.tableStockMap[ChickenParts.SELL_KG] * chickenMulList[i], createOn: _dateManager.selectTime)));
+    for (int i = 0; i < chickenPartList.length; ++i) {
+
     }
 
     _buyManager.updateView();
-
   }
 
   Widget valueText(String kind, String value, String unit) {

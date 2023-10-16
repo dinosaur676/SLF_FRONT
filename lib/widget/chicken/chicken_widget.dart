@@ -6,7 +6,6 @@ import 'package:slf_front/manager/buy_manager.dart';
 import 'package:slf_front/manager/chicken_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
 import 'package:slf_front/manager/listener/main_listener.dart';
-import 'package:slf_front/model/dto/request_dto.dart';
 import 'package:slf_front/util/chicken_parts.dart';
 import 'package:slf_front/util/param_keys.dart';
 import 'package:slf_front/util/param_util.dart';
@@ -126,7 +125,7 @@ class _ChickenWidgetState extends State<ChickenWidget> {
       await getAPIManager().PUT(
           APIManager.URI_CHICKEN,
           ChickenParam.addItemParam(
-              widget.mainKey, ChickenParts.CREATE, result));
+              widget.mainKey, ChickenParts.CREATE));
     }
 
     onSetState();
@@ -144,30 +143,12 @@ class _ChickenWidgetState extends State<ChickenWidget> {
 
     if (result != null) {
       await getAPIManager().PUT(APIManager.URI_CHICKEN,
-          ChickenParam.addItemParam(widget.mainKey, ChickenParts.SELL, result));
+          ChickenParam.addItemParam(widget.mainKey, ChickenParts.SELL));
 
       if (widget.listenerParam != null) {
         List eventList =
         widget.listenerParam!.map((e) => e[ParamKeys.EVENT]).toList();
 
-        for (int i = 0; i < eventList.length; ++i) {
-          if ((result as RequestDto).name == eventList[i]) {
-            Map value = widget.listenerParam![i];
-
-            if (value[ParamKeys.MUL] > 0.01) {
-              await getAPIManager().PUT(
-                  APIManager.URI_CHICKEN,
-                  ChickenParam.addItemParam(
-                      value[ParamKeys.PARTS],
-                      ChickenParts.CREATE,
-                      RequestDto(
-                          name: "이푸드",
-                          count: (result).count *
-                              value[ParamKeys.MUL],
-                          createOn: _dateManager.selectTime)));
-            }
-          }
-        }
 
         widget.listener!.updateView();
       }

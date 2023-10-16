@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import 'package:slf_front/manager/chicken_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
 import 'package:slf_front/manager/price_manager.dart';
-import 'package:slf_front/model/dto/request_dto.dart';
 
 class ChickenWorkDialog extends StatefulWidget {
   final String time;
@@ -86,17 +85,7 @@ class _ChickenWorkDialogState extends State<ChickenWorkDialog> {
       return;
     }
 
-    RequestDto dto;
-    dto = RequestDto(
-        name: "${ctlList[0].text} / ${ctlList[1].text}호",
-        count: double.parse(ctlList[2].text),
-        createOn: widget.time);
-
-    dto.setPrice((double.parse(ctlList[2].text) * 350).toInt());
-
-    dto.clearTotal();
-
-    Navigator.of(context).pop(dto);
+    Navigator.of(context).pop();
   }
 
   Widget getInput(String label) {

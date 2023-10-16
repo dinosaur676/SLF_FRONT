@@ -3,7 +3,6 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 import 'package:slf_front/manager/chicken_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
-import 'package:slf_front/model/dto/request_dto.dart';
 
 class ChickenDialog extends StatefulWidget {
   final String time;
@@ -83,15 +82,7 @@ class _ChickenDialogState extends State<ChickenDialog> {
       }
     }
 
-    RequestDto dto;
-    dto = RequestDto(
-        name: ctlList[0].text, count: double.parse(ctlList[1].text), createOn: widget.time);
-    if (ctlList.length > 2) {
-      dto.setPrice(int.parse(ctlList[2].text));
-      dto.setTotal();
-    }
-
-    Navigator.of(context).pop(dto);
+    Navigator.of(context).pop();
   }
 
   Widget getInput(String label) {

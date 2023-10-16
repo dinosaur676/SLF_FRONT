@@ -1,7 +1,6 @@
 
 import 'package:slf_front/manager/api_manager.dart';
-import 'package:slf_front/model/dto/price_dto.dart';
-import 'package:slf_front/model/dto/request_dto.dart';
+import 'package:slf_front/model/dto/price/price_dto.dart';
 import 'package:slf_front/util/param_keys.dart';
 
 class ChickenParam {
@@ -17,12 +16,11 @@ class ChickenParam {
     return param;
   }
 
-  static Map addItemParam(String mainKey, String subKey, RequestDto dto) {
+  static Map addItemParam(String mainKey, String subKey, ) {
     Map param = {};
 
     param[ParamKeys.MAIN_KEY] = mainKey;
     param[ParamKeys.SUB_KEY] = subKey;
-    param[ParamKeys.DATA] = dto.getJson();
 
     return param;
   }
@@ -41,15 +39,6 @@ class PriceParam {
     Map param = {};
 
     param[ParamKeys.CREATE_ON] = createOn;
-
-    return param;
-  }
-
-
-  static Map insert(PriceDto dto) {
-    Map param = {};
-
-    param[ParamKeys.DATA] = dto.getJson();
 
     return param;
   }

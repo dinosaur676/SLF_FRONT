@@ -2,17 +2,19 @@ import 'dart:convert';
 
 import 'package:get_it/get_it.dart';
 import 'package:http/http.dart' as http;
+import 'package:slf_front/setting.dart';
 
 class APIManager {
   static const String URI_CHICKEN = "/api/chicken";
   static const String URI_PRICE = "/api/price";
+  static const String URI_COMPANY = "/api/company";
 
-  String _baseUri = "http://192.168.219.101:8390";
+  final String _baseUri = Setting.testURI;
 
-  Future<dynamic> GET(String uri, Map param) async {
+  Future<dynamic> GET(String uri, Map? param) async {
     String paramString = "";
 
-    param.forEach((key, value) {
+    param?.forEach((key, value) {
       paramString += "${key}=${value}&";
     });
 
