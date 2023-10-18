@@ -8,6 +8,8 @@ class APIManager {
   static const String URI_CHICKEN = "/api/chicken";
   static const String URI_PRICE = "/api/price";
   static const String URI_COMPANY = "/api/company";
+  static const String URI_BUY = "/api/buy";
+  static const String URI_WORK = "/api/work";
 
   final String _baseUri = Setting.testURI;
 

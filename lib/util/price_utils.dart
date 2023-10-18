@@ -1,10 +1,10 @@
 class PriceUtil {
-  static int getTotalPrice({required int marketPrice, required int lotPrice, required int loadingPrice, required double ho, required bool floatRound}) {
+  static int getTotalPrice({required int marketPrice, required int lotPrice, required int loadingPrice, required double sizePrice, required bool floatRound}) {
     if(floatRound) {
-      return _getTotalPriceFloat(marketPrice, lotPrice, loadingPrice, ho);
+      return _getTotalPriceFloat(marketPrice, lotPrice, loadingPrice, sizePrice);
     }
     else {
-      return _getTotalPriceInt(marketPrice, lotPrice, loadingPrice, ho);
+      return _getTotalPriceInt(marketPrice, lotPrice, loadingPrice, sizePrice);
     }
   }
 

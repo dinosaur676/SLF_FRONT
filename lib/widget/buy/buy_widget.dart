@@ -7,10 +7,13 @@ import 'package:slf_front/manager/chicken_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
 import 'package:slf_front/manager/price_manager.dart';
 import 'package:slf_front/model/company.dart';
+import 'package:slf_front/model/dto/buy/buy_resp_dto.dart';
+import 'package:slf_front/model/dto/price/price_dto.dart';
 import 'package:slf_front/util/chicken_parts.dart';
 import 'package:slf_front/util/constant.dart';
 import 'package:slf_front/util/param_util.dart';
 import 'package:slf_front/widget/buy/dialog/buy_add_dialog.dart';
+import 'package:slf_front/widget/buy/dialog/buy_update_dialog.dart';
 
 class BuyWidget extends StatefulWidget {
   const BuyWidget({
@@ -23,17 +26,15 @@ class BuyWidget extends StatefulWidget {
 
 class _BuyWidgetState extends State<BuyWidget> {
   final String title = "구매";
-  final String mainKey = ChickenParts.BUY;
 
   int createTotal = 0;
   int sellTotal = 0;
   bool isOpen = true;
   bool allRead = false;
 
-  List sellList = [];
-  List createList = [];
+  List<BuyRespDto> buyList = [];
 
-  List<String> createColumn = ["구매처", "구매일자", "호수", "수량", "단가", "소계", "작업 여부"];
+  List<String> buyColumn = ["구매처", "구매일자", "호수", "수량", "단가", "소계", "작업 여부"];
 
   late ChickenManager _chickenManager;
   late DateManager _dateManager;
@@ -86,9 +87,8 @@ class _BuyWidgetState extends State<BuyWidget> {
               _Top(
                 onPressed: onTopPressed,
                 title: title,
-                mainKey: mainKey,
-                createList: createList,
-                sellList: sellList,
+                createList: buyList,
+                sellList: buyColumn,
               ),
               if (isOpen) body()
             ],
@@ -97,12 +97,21 @@ class _BuyWidgetState extends State<BuyWidget> {
   }
 
   Future<void> updateNewData() async {
+    Map param = {"createdOn": _dateManager.selectTime};
+    final result = await GetIt.instance
+        .get<APIManager>()
+        .GET(APIManager.URI_BUY, param) as List;
+
+    buyList = result.map((e) => BuyRespDto.byResult(e)).toList();
+
     return;
   }
 
   double getTotalSum(List list, String parameterName) {
     return list.fold(
-        0, (sum, element) => sum + (element[parameterName] as double));
+      0,
+      (sum, element) => sum + (element[parameterName] as double),
+    );
   }
 
   void onTopPressed() async {
@@ -110,23 +119,30 @@ class _BuyWidgetState extends State<BuyWidget> {
   }
 
   void onCreateAddPressed() async {
-
     List companyData = await GetIt.instance.get<APIManager>().GET(
       APIManager.URI_COMPANY,
       {"name": ""},
     ) as List;
 
-    List<Company> companyList = companyData.map((e) => Company(e["id"], e["name"])).toList();
+    List<Company> companyList =
+        companyData.map((e) => Company.byResult(e)).toList();
 
-    if(!mounted) return; //위젯이 마운트되지 않으면 async뒤에 context를 썼을 때 그 안에 아무런 값도 들어있지 않을 수 있어서다.
+    if (!mounted)
+      return; //위젯이 마운트되지 않으면 async뒤에 context를 썼을 때 그 안에 아무런 값도 들어있지 않을 수 있어서다.
 
     final result = await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return BuyAddDialog(companyList: companyList);
+        return BuyAddDialog(
+            companyList: companyList, createdOn: _dateManager.selectTime);
       },
     );
 
+    if (result != null) {
+      await GetIt.instance
+          .get<APIManager>()
+          .PUT(APIManager.URI_BUY, result.toJson());
+    }
 
     setState(() {});
   }
@@ -144,9 +160,10 @@ class _BuyWidgetState extends State<BuyWidget> {
             padding: const EdgeInsets.only(left: 8.0),
             child: _BuyTable(
               onCreateAddPressed: onCreateAddPressed,
-              column: createColumn,
-              createList: createList,
+              column: buyColumn,
+              buyList: buyList,
               onSetState: onSetState,
+              onPressRowItem: onPressRowItem,
             ),
           ),
         ),
@@ -157,21 +174,34 @@ class _BuyWidgetState extends State<BuyWidget> {
   APIManager getAPIManager() {
     return GetIt.instance.get<APIManager>();
   }
+
+  void onPressRowItem(BuyRespDto dto) async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return BuyUpdateDialog(buyRespDto: dto);
+      },
+    );
+
+    return;
+  }
 }
 
 class _BuyTable extends StatelessWidget {
-  final List createList;
+  final List<BuyRespDto> buyList;
   final List<String> column;
   final VoidCallback onCreateAddPressed;
   final VoidCallback onSetState;
+  final void Function(BuyRespDto dto) onPressRowItem;
 
-  const _BuyTable(
-      {Key? key,
-      required this.onCreateAddPressed,
-      required this.column,
-      required this.createList,
-      required this.onSetState})
-      : super(key: key);
+  const _BuyTable({
+    Key? key,
+    required this.onCreateAddPressed,
+    required this.column,
+    required this.buyList,
+    required this.onSetState,
+    required this.onPressRowItem,
+  }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -179,6 +209,7 @@ class _BuyTable extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         DataTable(
+            showCheckboxColumn: false,
             border: const TableBorder(
                 top: BorderSide(width: 2),
                 right: BorderSide(width: 1),
@@ -224,19 +255,19 @@ class _BuyTable extends StatelessWidget {
   }
 
   List<DataRow> createRows() {
-    return createList.map((e) {
+    return buyList.map((e) {
       return DataRow(
-        onLongPress: () {
-          GetIt.instance.get<APIManager>().DELETE(
-              APIManager.URI_CHICKEN, ChickenParam.deleteItemParam(e["id"]));
-
-          onSetState();
+        onSelectChanged: (value) {
+          onPressRowItem(e);
         },
         cells: [
-          DataCell(Text(e["name"])),
-          DataCell(Text(e["count"].toString())),
-          DataCell(Text(e["price"].toString())),
-          DataCell(Text(e["total"].toString())),
+          DataCell(Text(e.name)),
+          DataCell(Text(e.buyTime)),
+          DataCell(Text(e.size.toString())),
+          DataCell(Text(e.count.toString())),
+          DataCell(Text(e.price.toString())),
+          DataCell(Text(e.total.toString())),
+          DataCell(Text(e.price.toString())),
         ],
       );
     }).toList();
@@ -247,16 +278,14 @@ class _Top extends StatelessWidget {
   final String title;
   final VoidCallback onPressed;
   final List sellList, createList;
-  final String mainKey;
 
-  _Top(
-      {Key? key,
-      required this.createList,
-      required this.sellList,
-      required this.onPressed,
-      required this.title,
-      required this.mainKey})
-      : super(key: key);
+  _Top({
+    Key? key,
+    required this.createList,
+    required this.sellList,
+    required this.onPressed,
+    required this.title,
+  }) : super(key: key);
 
   late BuyManager _buyManager;
   late ChickenManager _chickenManager;
@@ -356,9 +385,7 @@ class _Top extends StatelessWidget {
     ];
     List chickenMulList = [0.1, 0.22, 0.3, 0.042];
 
-    for (int i = 0; i < chickenPartList.length; ++i) {
-
-    }
+    for (int i = 0; i < chickenPartList.length; ++i) {}
 
     _buyManager.updateView();
   }
