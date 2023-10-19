@@ -1,13 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
-import 'package:provider/provider.dart';
-import 'package:slf_front/manager/chicken_manager.dart';
-import 'package:slf_front/manager/date_manager.dart';
-import 'package:slf_front/manager/price_manager.dart';
+import 'package:slf_front/manager/table_manager.dart';
 
 class ChickenWorkDialog extends StatefulWidget {
   final String time;
-  final ChickenManager chickenManager;
+  final TableManager chickenManager;
   final List<String> labels = [
     "생산처",
     "호수",

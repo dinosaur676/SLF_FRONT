@@ -5,7 +5,7 @@ import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:slf_front/manager/api_manager.dart';
-import 'package:slf_front/manager/chicken_manager.dart';
+import 'package:slf_front/manager/table_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
 import 'package:slf_front/util/chicken_parts.dart';
 import 'package:slf_front/util/param_keys.dart';
@@ -66,12 +66,12 @@ class _StockPageState extends State<StockPage> {
   List eventList = [];
 
   late DateManager _dateManager;
-  late ChickenManager _chickenManager;
+  late TableManager _chickenManager;
 
   @override
   Widget build(BuildContext context) {
     _dateManager = Provider.of<DateManager>(context, listen: true);
-    _chickenManager = Provider.of<ChickenManager>(context, listen: true);
+    _chickenManager = Provider.of<TableManager>(context, listen: true);
 
     if(stockDay == "" || !checkSelectDay()) {
       stockDay = DateFormat("yyyy-MM-dd").format(DateTime.parse(_dateManager.selectTime).add(const Duration(days: 1)));
@@ -169,7 +169,7 @@ class _StockPageState extends State<StockPage> {
     Fluttertoast.showToast(msg: "적용중", gravity: ToastGravity.CENTER);
     for (var event in eventList) {
       await GetIt.instance.get<APIManager>().PUT(
-          APIManager.URI_CHICKEN,
+          APIManager.URI_CHICKEN_PRODUCTION,
           ChickenParam.addItemParam(
               event[ParamKeys.MAIN_KEY],
               event[ParamKeys.SUB_KEY])
@@ -257,8 +257,8 @@ class _StockPageState extends State<StockPage> {
           }
 
           return getAPIMap(
-              ChickenParts.BUY,
-              ChickenParts.BUY);
+              ChickenParts.BUY_COUNT,
+              ChickenParts.BUY_COUNT);
         }).toList();
   }
 

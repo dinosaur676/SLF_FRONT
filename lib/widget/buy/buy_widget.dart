@@ -3,12 +3,13 @@ import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
 import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/manager/buy_manager.dart';
-import 'package:slf_front/manager/chicken_manager.dart';
+import 'package:slf_front/manager/stock_manager.dart';
+import 'package:slf_front/manager/table_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
-import 'package:slf_front/manager/price_manager.dart';
 import 'package:slf_front/model/company.dart';
 import 'package:slf_front/model/dto/buy/buy_resp_dto.dart';
 import 'package:slf_front/model/dto/price/price_dto.dart';
+import 'package:slf_front/model/dto/work/work_resp_dto.dart';
 import 'package:slf_front/util/chicken_parts.dart';
 import 'package:slf_front/util/constant.dart';
 import 'package:slf_front/util/param_util.dart';
@@ -25,8 +26,6 @@ class BuyWidget extends StatefulWidget {
 }
 
 class _BuyWidgetState extends State<BuyWidget> {
-  final String title = "구매";
-
   int createTotal = 0;
   int sellTotal = 0;
   bool isOpen = true;
@@ -34,42 +33,23 @@ class _BuyWidgetState extends State<BuyWidget> {
 
   List<BuyRespDto> buyList = [];
 
-  List<String> buyColumn = ["구매처", "구매일자", "호수", "수량", "단가", "소계", "작업 여부"];
+  List<String> buyColumn = ["구매처", "구매일자", "호수", "수량", "단가", "소계", "작업처 개수"];
 
-  late ChickenManager _chickenManager;
+  late TableManager _tableManager;
+  late BuyManager _buyManager;
   late DateManager _dateManager;
-  late PriceManager _priceManager;
+  late StockManager _stockManager;
 
   @override
   Widget build(BuildContext context) {
-    _chickenManager = Provider.of<ChickenManager>(context, listen: false);
+    _tableManager = Provider.of<TableManager>(context, listen: false);
     _dateManager = Provider.of<DateManager>(context, listen: true);
-    _priceManager = Provider.of<PriceManager>(context, listen: false);
+    _buyManager = Provider.of<BuyManager>(context, listen: true);
+    _stockManager = Provider.of<StockManager>(context, listen: false);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const Divider(
-          color: Colors.black,
-          height: 2.0,
-        ),
-        Container(
-          color: Colors.grey[300],
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8.0),
-            child: Text(
-              title,
-              textAlign: TextAlign.center,
-              style: StyleConstant.textStyle,
-            ),
-          ),
-        ),
-        const Divider(
-          color: Colors.black,
-          height: 2.0,
-        ),
-        buyTableWidget()
-      ],
+      children: [buyTableWidget()],
     );
   }
 
@@ -86,9 +66,7 @@ class _BuyWidgetState extends State<BuyWidget> {
             children: [
               _Top(
                 onPressed: onTopPressed,
-                title: title,
                 createList: buyList,
-                sellList: buyColumn,
               ),
               if (isOpen) body()
             ],
@@ -104,14 +82,30 @@ class _BuyWidgetState extends State<BuyWidget> {
 
     buyList = result.map((e) => BuyRespDto.byResult(e)).toList();
 
-    return;
-  }
+    final resultWork = await GetIt.instance.get<APIManager>().GET(APIManager.URI_WORK, param) as List;
+    List<WorkRespDto> workRespList = resultWork.map((e) => WorkRespDto.byResult(e)).toList();
 
-  double getTotalSum(List list, String parameterName) {
-    return list.fold(
-      0,
-      (sum, element) => sum + (element[parameterName] as double),
-    );
+    _tableManager.tableStockMap[ChickenParts.BUY_COUNT] = buyList.fold(
+        0, (previousValue, element) => previousValue + element.count);
+    _tableManager.tableStockMap[ChickenParts.BUY_TOTAL] = buyList.fold(
+        0, (previousValue, element) => previousValue + element.total);
+
+    _tableManager.tableStockMap[ChickenParts.CHICKEN] =
+        _tableManager.tableStockMap[ChickenParts.BUY_COUNT] - workRespList.fold(0, (previousValue, element) => previousValue + element.count);
+
+    Map<int, int> chickenPriceTempMap = {};
+
+    for(var buy in buyList) {
+      chickenPriceTempMap[buy.id] = buy.price;
+    }
+
+    _tableManager.tableStockMap[ChickenParts.WORKED_CHICKEN_PRICE] = workRespList.fold(0, (previousValue, element) {
+      return previousValue + (element.count * chickenPriceTempMap[element.buyId]!);
+    });
+
+
+    _tableManager.updateView();
+    return;
   }
 
   void onTopPressed() async {
@@ -133,8 +127,7 @@ class _BuyWidgetState extends State<BuyWidget> {
     final result = await showDialog(
       context: context,
       builder: (BuildContext context) {
-        return BuyAddDialog(
-            companyList: companyList, createdOn: _dateManager.selectTime);
+        return BuyAddDialog(createdOn: _dateManager.selectTime);
       },
     );
 
@@ -182,6 +175,8 @@ class _BuyWidgetState extends State<BuyWidget> {
         return BuyUpdateDialog(buyRespDto: dto);
       },
     );
+
+    _buyManager.updateView();
 
     return;
   }
@@ -267,7 +262,7 @@ class _BuyTable extends StatelessWidget {
           DataCell(Text(e.count.toString())),
           DataCell(Text(e.price.toString())),
           DataCell(Text(e.total.toString())),
-          DataCell(Text(e.price.toString())),
+          DataCell(Text(e.workCount.toString())),
         ],
       );
     }).toList();
@@ -275,27 +270,20 @@ class _BuyTable extends StatelessWidget {
 }
 
 class _Top extends StatelessWidget {
-  final String title;
   final VoidCallback onPressed;
-  final List sellList, createList;
+  final List createList;
 
   _Top({
     Key? key,
     required this.createList,
-    required this.sellList,
     required this.onPressed,
-    required this.title,
   }) : super(key: key);
 
   late BuyManager _buyManager;
-  late ChickenManager _chickenManager;
-  late DateManager _dateManager;
 
   @override
   Widget build(BuildContext context) {
     _buyManager = Provider.of<BuyManager>(context, listen: false);
-    _chickenManager = Provider.of<ChickenManager>(context, listen: false);
-    _dateManager = Provider.of<DateManager>(context, listen: false);
 
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
@@ -332,28 +320,19 @@ class _Top extends StatelessWidget {
                       children: [
                         valueText(
                             "구매량",
-                            '${context.watch<ChickenManager>().tableStockMap[ChickenParts.BUY]}',
+                            '${context.watch<TableManager>().tableStockMap[ChickenParts.BUY_COUNT]}',
                             "수"),
-                        const VerticalDivider(thickness: 1),
-                        valueText(
-                            "구매량 Kg",
-                            '${context.watch<ChickenManager>().tableStockMap[ChickenParts.BUY_KG]}',
-                            "Kg"),
                         const VerticalDivider(thickness: 1),
                         valueText(
                             "재고",
-                            '${context.watch<ChickenManager>().stockMap[ChickenParts.CHICKEN]}',
-                            "수"),
+                            '${context.watch<TableManager>().tableStockMap[ChickenParts.CHICKEN]}',
+                            "원"),
                         const VerticalDivider(thickness: 1),
                         valueText(
                             "구매 금액",
-                            '${context.watch<ChickenManager>().totalMap[ChickenParts.BUY]}',
+                            '${context.watch<TableManager>().tableStockMap[ChickenParts.BUY_TOTAL]}',
                             "원"),
-                        const VerticalDivider(thickness: 1),
-                        valueText(
-                            "작업 비",
-                            '${context.watch<ChickenManager>().totalMap[ChickenParts.WORK]}',
-                            "원"),
+
                         Padding(
                           padding: const EdgeInsets.only(left: 30.0),
                           child: OutlinedButton(

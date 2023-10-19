@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
-import 'package:slf_front/manager/chicken_manager.dart';
+import 'package:slf_front/manager/table_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
 
 class ChickenDialog extends StatefulWidget {

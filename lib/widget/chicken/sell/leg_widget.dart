@@ -38,7 +38,7 @@ class _LegWidgetState extends State<LegWidget> {
         ChickenWidget(
           listenerParam: getListItem([1, 2, 4]),
           title: titleList[0][ParamKeys.TITLE],
-          mainKey: titleList[0][ParamKeys.PARTS],
+          parts: titleList[0][ParamKeys.PARTS],
           listener: listener,
         )
     );
@@ -46,7 +46,7 @@ class _LegWidgetState extends State<LegWidget> {
     result.add(
         ChickenWidget(
           title: titleList[1][ParamKeys.TITLE],
-          mainKey: titleList[1][ParamKeys.PARTS],
+          parts: titleList[1][ParamKeys.PARTS],
           listener: listener,
         )
     );
@@ -55,7 +55,7 @@ class _LegWidgetState extends State<LegWidget> {
         ChickenWidget(
           listenerParam: getListItem([3]),
           title: titleList[2][ParamKeys.TITLE],
-          mainKey: titleList[2][ParamKeys.PARTS],
+          parts: titleList[2][ParamKeys.PARTS],
           listener: listener,
         )
     );
@@ -63,7 +63,7 @@ class _LegWidgetState extends State<LegWidget> {
     result.add(
         ChickenWidget(
           title: titleList[3][ParamKeys.TITLE],
-          mainKey: titleList[3][ParamKeys.PARTS],
+          parts: titleList[3][ParamKeys.PARTS],
           listener: listener,
         )
     );
@@ -72,14 +72,14 @@ class _LegWidgetState extends State<LegWidget> {
         ChickenWidget(
           listenerParam: getListItem([5, 6]),
           title: titleList[4][ParamKeys.TITLE],
-          mainKey: titleList[4][ParamKeys.PARTS],
+          parts: titleList[4][ParamKeys.PARTS],
           listener: listener,
         )
     );
 
     List temp = titleList.sublist(5).map((e) =>
         ChickenWidget(title: e[ParamKeys.TITLE],
-            mainKey: e[ParamKeys.PARTS],
+            parts: e[ParamKeys.PARTS],
             listener: listener)
     ).toList();
 

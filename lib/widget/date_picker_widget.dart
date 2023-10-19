@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'package:slf_front/manager/chicken_manager.dart';
+import 'package:slf_front/manager/table_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
 
 class DatePickerWidget extends StatefulWidget {
@@ -14,12 +14,12 @@ class DatePickerWidget extends StatefulWidget {
 class _DatePickerWidgetState extends State<DatePickerWidget> {
 
   late DateManager _dateManager;
-  late ChickenManager _chickenManager;
+  late TableManager _chickenManager;
 
   @override
   Widget build(BuildContext context) {
     _dateManager = Provider.of<DateManager>(context, listen: false);
-    _chickenManager = Provider.of<ChickenManager>(context, listen: false);
+    _chickenManager = Provider.of<TableManager>(context, listen: false);
 
     return Container(
       child: Center(

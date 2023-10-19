@@ -3,23 +3,26 @@ import 'package:get_it/get_it.dart';
 import 'package:provider/provider.dart';
 import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/manager/buy_manager.dart';
-import 'package:slf_front/manager/chicken_manager.dart';
+import 'package:slf_front/manager/table_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
 import 'package:slf_front/manager/listener/main_listener.dart';
+import 'package:slf_front/model/dto/chicken_production/chicken_prod_resp_dto.dart';
+import 'package:slf_front/model/dto/chicken_production/chicken_prod_select_reqeust_dto.dart';
 import 'package:slf_front/util/chicken_parts.dart';
 import 'package:slf_front/util/param_keys.dart';
 import 'package:slf_front/util/param_util.dart';
+import 'package:slf_front/widget/chicken/prod/chicken_prod_insert_dialog.dart';
 import 'package:slf_front/widget/chicken/sell/add_dialog.dart';
 
 class ChickenWidget extends StatefulWidget {
   final String title;
-  final String mainKey;
+  final String parts;
   MainListener? listener;
   List? listenerParam;
 
   ChickenWidget({Key? key,
     required this.title,
-    required this.mainKey,
+    required this.parts,
     this.listener,
     this.listenerParam})
       : super(key: key);
@@ -35,18 +38,18 @@ class _ChickenWidgetState extends State<ChickenWidget> {
   bool allRead = false;
 
   List sellList = [];
-  List createList = [];
+  List<ChickenProdRespDto> prodList = [];
 
-  List<String> createColumn = ["생산처", "생산량"];
+  List<String> prodColumn = ["생산처", "생산량", "생산가격", "소계", "생산종류"];
   List<String> sellColumn = ["판매처", "출고량", "단가", "계"];
 
-  late ChickenManager _chickenManager;
+  late TableManager _chickenManager;
   late DateManager _dateManager;
   late BuyManager _buyManager;
 
   @override
   Widget build(BuildContext context) {
-    _chickenManager = Provider.of<ChickenManager>(context, listen: false);
+    _chickenManager = Provider.of<TableManager>(context, listen: false);
     _dateManager = Provider.of<DateManager>(context, listen: true);
     _buyManager = Provider.of<BuyManager>(context, listen: true);
 
@@ -58,8 +61,8 @@ class _ChickenWidgetState extends State<ChickenWidget> {
               _Top(
                 onPressed: onTopPressed,
                 title: widget.title,
-                mainKey: widget.mainKey,
-                createList: createList,
+                mainKey: widget.parts,
+                createList: prodList,
                 sellList: sellList,
                 chickenManager: _chickenManager,
               ),
@@ -75,32 +78,10 @@ class _ChickenWidgetState extends State<ChickenWidget> {
   }
 
   Future<void> updateNewData() async {
-    createList = await getAPIManager().POST(
-        APIManager.URI_CHICKEN,
-        ChickenParam.getInfoParam(
-            widget.mainKey, ChickenParts.CREATE, _dateManager.selectTime));
+    var result = await getAPIManager().GET(
+        APIManager.URI_CHICKEN_PRODUCTION, ChickenProdSelectRequestDto(widget.parts, _dateManager.selectTime).toJson()) as List;
 
-    sellList = await getAPIManager().POST(
-        APIManager.URI_CHICKEN,
-        ChickenParam.getInfoParam(
-            widget.mainKey, ChickenParts.SELL, _dateManager.selectTime));
-
-
-    _chickenManager.priceMap[widget.mainKey] =
-        sellList.fold(0, (sum, element) => sum + (element["total"] as int));
-    _chickenManager.tableStockMap[widget.mainKey + ChickenParts.SELL] =
-        sellList.fold(
-            0.0, (sum, element) => sum + (element["count"] as double));
-    _chickenManager.tableStockMap[widget.mainKey] =
-        createList.fold(0.0, (sum, element) {
-          double test = sum + (element["count"] as double);
-
-          return sum + (element["count"] as double);
-        });
-
-    _chickenManager.stockMap[widget.mainKey] =
-        _chickenManager.tableStockMap[widget.mainKey] -
-            _chickenManager.tableStockMap[widget.mainKey + ChickenParts.SELL];
+    prodList = result.map((e) => ChickenProdRespDto.byResult(e)).toList();
 
     _chickenManager.updateView();
 
@@ -114,19 +95,11 @@ class _ChickenWidgetState extends State<ChickenWidget> {
   }
 
   void onCreateAddPressed() async {
-    dynamic result = await showDialog(
+    await showDialog(
         context: context,
         builder: (BuildContext context) {
-          return ChickenDialog(
-              labels: createColumn, time: _dateManager.selectTime, stock: 0);
+          return ChickenProdInsertDialog(parts: widget.parts, createdOn: _dateManager.selectTime);
         });
-
-    if (result != null) {
-      await getAPIManager().PUT(
-          APIManager.URI_CHICKEN,
-          ChickenParam.addItemParam(
-              widget.mainKey, ChickenParts.CREATE));
-    }
 
     onSetState();
   }
@@ -138,12 +111,12 @@ class _ChickenWidgetState extends State<ChickenWidget> {
           return ChickenDialog(
               labels: sellColumn.sublist(0, 3),
               time: _dateManager.selectTime,
-              stock: _chickenManager.stockMap[widget.mainKey]);
+              stock: _chickenManager.stockMap[widget.parts]);
         });
 
     if (result != null) {
-      await getAPIManager().PUT(APIManager.URI_CHICKEN,
-          ChickenParam.addItemParam(widget.mainKey, ChickenParts.SELL));
+      await getAPIManager().PUT(APIManager.URI_CHICKEN_PRODUCTION,
+          ChickenParam.addItemParam(widget.parts, ChickenParts.SELL));
 
       if (widget.listenerParam != null) {
         List eventList =
@@ -170,9 +143,9 @@ class _ChickenWidgetState extends State<ChickenWidget> {
             padding: const EdgeInsets.only(left: 8.0),
             child: _CreateTable(
               onCreateAddPressed: onCreateAddPressed,
-              column: createColumn,
-              mainKey: widget.mainKey,
-              createList: createList,
+              column: prodColumn,
+              mainKey: widget.parts,
+              createList: prodList,
               onSetState: onSetState,
             ),
           ),
@@ -183,7 +156,7 @@ class _ChickenWidgetState extends State<ChickenWidget> {
             child: _SellTable(
               onSellAddPressed: onSellAddPressed,
               column: sellColumn,
-              mainKey: widget.mainKey,
+              mainKey: widget.parts,
               sellList: sellList,
               onSetState: onSetState,
             ),
@@ -265,7 +238,7 @@ class _SellTable extends StatelessWidget {
       return DataRow(
         onLongPress: () {
           GetIt.instance.get<APIManager>().DELETE(
-              APIManager.URI_CHICKEN, ChickenParam.deleteItemParam(e["id"]));
+              APIManager.URI_CHICKEN_PRODUCTION, ChickenParam.deleteItemParam(e["id"]));
 
           onSetState();
         },
@@ -347,7 +320,7 @@ class _CreateTable extends StatelessWidget {
       return DataRow(
         onLongPress: () {
           GetIt.instance.get<APIManager>().DELETE(
-              APIManager.URI_CHICKEN, ChickenParam.deleteItemParam(e["id"]));
+              APIManager.URI_CHICKEN_PRODUCTION, ChickenParam.deleteItemParam(e["id"]));
 
           onSetState();
         },
@@ -365,7 +338,7 @@ class _Top extends StatelessWidget {
   final VoidCallback onPressed;
   final List sellList, createList;
   final String mainKey;
-  final ChickenManager chickenManager;
+  final TableManager chickenManager;
 
   _Top({Key? key,
     required this.createList,

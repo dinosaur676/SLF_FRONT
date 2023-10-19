@@ -7,10 +7,10 @@ class BuyRespDto {
   late final int price;
   late final int total;
   late final String createdOn;
-
+  late final int workCount;
 
   BuyRespDto(this.id, this.name, this.buyTime, this.size, this.count,
-      this.price, this.total, this.createdOn);
+      this.price, this.total, this.createdOn, this.workCount);
 
   BuyRespDto.byResult(Map result) {
     id = result["id"];
@@ -21,5 +21,6 @@ class BuyRespDto {
     price = result["price"];
     total = result["total"];
     createdOn = result["createdOn"];
+    workCount = result["workCount"];
   }
 }

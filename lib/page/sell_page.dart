@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:slf_front/manager/chicken_manager.dart';
+import 'package:slf_front/manager/table_manager.dart';
+import 'package:slf_front/util/chicken_parts.dart';
+import 'package:slf_front/util/constant.dart';
 import 'package:slf_front/widget/buy/buy_widget.dart';
 import 'package:slf_front/widget/chicken/sell/breast_widget.dart';
 import 'package:slf_front/widget/chicken/sell/etc_widget.dart';
 import 'package:slf_front/widget/chicken/sell/leg_widget.dart';
 import 'package:slf_front/widget/chicken/sell/tender_widget.dart';
 import 'package:slf_front/widget/chicken/sell/wing_widget.dart';
+import 'package:slf_front/widget/work/work_widget.dart';
 
 class SellPage extends StatefulWidget {
   const SellPage({Key? key}) : super(key: key);
@@ -48,7 +51,7 @@ class _SellPageState extends State<SellPage> {
     return Column(
       mainAxisAlignment: MainAxisAlignment.start,
       children: [
-        const BuyWidget(),
+        buyBody(),
         const Padding(
           padding: EdgeInsets.symmetric(vertical: 25.0),
           child: Divider(thickness: 10),
@@ -58,25 +61,54 @@ class _SellPageState extends State<SellPage> {
       ],
     );
   }
+
+  Widget buyBody() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Divider(
+          color: Colors.black,
+          height: 2.0,
+        ),
+        Container(
+          color: Colors.grey[300],
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: Text(
+              "구매 및 작업",
+              textAlign: TextAlign.center,
+              style: StyleConstant.textStyle,
+            ),
+          ),
+        ),
+        const Divider(
+          color: Colors.black,
+          height: 2.0,
+        ),
+        const BuyWidget(),
+        const WorkWidget(),
+      ],
+    );
+  }
 }
 
 class _Bottom extends StatelessWidget {
   _Bottom({Key? key}) : super(key: key);
 
-  late ChickenManager _chickenManager;
+  late TableManager _chickenManager;
 
   @override
   Widget build(BuildContext context) {
-    _chickenManager = Provider.of<ChickenManager>(context);
+    _chickenManager = Provider.of<TableManager>(context);
 
     return Column(
       children: [
         const Divider(height: 2, color: Colors.black,),
         getRow("판매 합계 금액", "${_chickenManager.getTotalSell()}"),
         const Divider(thickness: 1,),
-        getRow("구매 및 작업비 합계 금액", "${_chickenManager.getTotalBuy()}"),
+        getRow("구매(작업된 닭) 및 작업비 합계 금액", "${_chickenManager.getWorkedPrice()}"),
         const Divider(thickness: 1,),
-        getRow("수익금", "${context.watch<ChickenManager>().getProfits()}"),
+        getRow("수익금", "${context.watch<TableManager>().getProfits()}"),
         const Divider(height: 2,),
       ],
     );

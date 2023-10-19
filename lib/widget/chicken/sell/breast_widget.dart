@@ -38,7 +38,7 @@ class _BreastWidgetState extends State<BreastWidget> {
     result.add(ChickenWidget(
       listenerParam: titleList.sublist(1),
       title: titleList[0][ParamKeys.TITLE],
-      mainKey: titleList[0][ParamKeys.PARTS],
+      parts: titleList[0][ParamKeys.PARTS],
       listener: listener,
     ));
 
@@ -46,7 +46,7 @@ class _BreastWidgetState extends State<BreastWidget> {
         .sublist(1)
         .map((e) => ChickenWidget(
             title: e[ParamKeys.TITLE],
-            mainKey: e[ParamKeys.PARTS],
+            parts: e[ParamKeys.PARTS],
             listener: listener))
         .toList();
 

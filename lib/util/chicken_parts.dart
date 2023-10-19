@@ -36,11 +36,19 @@ class ChickenParts {
 
   static const String NECK = "neck"; //목살
 
-  //키
-  static const String BUY = "buy";
+  //BUY
+  static const String BUY_COUNT = "buy_count";
   static const String BUY_KG = "buy_kg";
+  static const String BUY_TOTAL = "buy_total";
+
+  //WORK
+  static const String WORK_COUNT = "work_count";
+  static const String WORK_TOTAL = "work_total";
+  static const String WORKED_CHICKEN_PRICE = "worked_chicken_price";
+
+
+  //키
   static const String SELL_KG = "sell_kg";
-  static const String WORK = "work";
   static const String SELL = "sell";
   static const String CREATE = "create";
 }

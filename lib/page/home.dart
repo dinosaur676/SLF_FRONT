@@ -3,7 +3,7 @@ import 'dart:js_interop';
 import 'package:easy_sidemenu/easy_sidemenu.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:slf_front/manager/chicken_manager.dart';
+import 'package:slf_front/manager/table_manager.dart';
 import 'package:slf_front/page/price_page.dart';
 import 'package:slf_front/page/sell_page.dart';
 import 'package:slf_front/page/stock_page.dart';

@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:intl/intl.dart';
 import 'package:slf_front/util/chicken_parts.dart';
 
-class ChickenManager extends ChangeNotifier{
+class TableManager extends ChangeNotifier{
 
   static const String TOTAL_SELL = "total_sell";
   static const String TOTAL_BUY = "total_buy";
@@ -20,7 +20,7 @@ class ChickenManager extends ChangeNotifier{
   Map get stockMap => _stockMap;
 
 
-  ChickenManager(){
+  TableManager(){
     _totalMap[TOTAL_SELL] = 0;
     _totalMap[TOTAL_BUY] = 0;
     _totalMap[PROFITS] = 0;
@@ -37,6 +37,13 @@ class ChickenManager extends ChangeNotifier{
     _totalMap[PROFITS] = 0;
   }
 
+  int getWorkedPrice() {
+    if(tableStockMap[ChickenParts.WORKED_CHICKEN_PRICE] == null || tableStockMap[ChickenParts.WORK_TOTAL] == null) {
+      return 0;
+    }
+
+    return tableStockMap[ChickenParts.WORKED_CHICKEN_PRICE] + tableStockMap[ChickenParts.WORK_TOTAL];
+  }
 
   void setPriceValue(String key, int value) {
     _priceMap[key] = value;

@@ -38,10 +38,10 @@ class _EtcWidgetState extends State<EtcWidget> {
           color: Colors.black,
           height: 2.0,
         ),
-        ChickenWidget(title: "어깨살", mainKey: ChickenParts.SHOULDER),
-        ChickenWidget(title: "잔골", mainKey: ChickenParts.BONE),
-        ChickenWidget(title: "목살", mainKey: ChickenParts.NECK),
-        ChickenWidget(title: "잡육", mainKey: ChickenParts.ETC_MEAT),
+        ChickenWidget(title: "어깨살", parts: ChickenParts.SHOULDER),
+        ChickenWidget(title: "잔골", parts: ChickenParts.BONE),
+        ChickenWidget(title: "목살", parts: ChickenParts.NECK),
+        ChickenWidget(title: "잡육", parts: ChickenParts.ETC_MEAT),
         const Padding(
           padding: EdgeInsets.only(top: 8.0),
           child: Divider(

@@ -1,21 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:fluttertoast/fluttertoast.dart';
 import 'package:get_it/get_it.dart';
 import 'package:intl/intl.dart';
 import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/model/company.dart';
-import 'package:slf_front/model/dto/buy/buy_insert_req_dto.dart';
-import 'package:slf_front/model/dto/price/price_dto.dart';
-import 'package:slf_front/model/dto/price/price_request_dto.dart';
+import 'package:slf_front/model/dto/buy/buy_resp_dto.dart';
+import 'package:slf_front/model/dto/work/work_resp_dto.dart';
+import 'package:slf_front/model/dto/work/work_update_request_dto.dart';
 import 'package:slf_front/util/constant.dart';
-import 'package:slf_front/util/price_utils.dart';
 
 enum _TextFormType {
-  buyName("구매처", 0),
-  buyTime("구매일자", 1),
-  size("호수", 2),
-  sizePrice("호수 단가", 3),
-  count("수량", 4);
+  workName("작업처", 0),
+  workTime("작업일자", 1),
+  count("수량", 2),
+  price("가격", 3);
 
   const _TextFormType(this.label, this.pos);
 
@@ -23,19 +20,20 @@ enum _TextFormType {
   final int pos;
 }
 
-class BuyAddDialog extends StatefulWidget {
-  String createdOn;
+class WorkUpdateDialog extends StatefulWidget {
+  WorkRespDto dto;
 
-  BuyAddDialog({
+  WorkUpdateDialog({
     Key? key,
-    required this.createdOn,
+    required this.dto,
   }) : super(key: key);
 
   @override
-  State<BuyAddDialog> createState() => _BuyAddDialogState();
+  State<WorkUpdateDialog> createState() => _WorkUpdateDialogState();
 }
 
-class _BuyAddDialogState extends State<BuyAddDialog> {
+class _WorkUpdateDialogState extends State<WorkUpdateDialog> {
+  late BuyRespDto buyRespDto;
   List<Company> companyList = [];
   final List<_TextFormType> types = _TextFormType.values.map((e) => e).toList();
 
@@ -43,15 +41,22 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
     for (var element in types) element.pos: TextEditingController()
   };
 
-  bool floatRound = false;
+  @override
+  void initState() {
+    super.initState();
+
+    ctlList[_TextFormType.workName.pos]!.text = widget.dto.name;
+    ctlList[_TextFormType.workTime.pos]!.text = widget.dto.workTime;
+    ctlList[_TextFormType.count.pos]!.text = widget.dto.count.toString();
+    ctlList[_TextFormType.price.pos]!.text = widget.dto.price.toString();
+
+  }
 
   @override
   Widget build(BuildContext context) {
     return Dialog(
       child: FutureBuilder(
-        future: getCompanyList(),
-        builder: (context, snapshot) {
-
+        future: getCompanyList(), builder: (context, snapshot) {
           if(snapshot.connectionState != ConnectionState.done) {
             return const Center(
               child: CircularProgressIndicator(),
@@ -63,47 +68,60 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Row(
-                  children: [
-                    Checkbox(
-                      value: floatRound,
-                      onChanged: (value) {
-                        setState(() {
-                          floatRound = value!;
-                        });
-                      },
-                    ),
-                    const Text("소수 반올림"),
-                  ],
-                ),
                 buyBody(),
+                workBody(),
                 buttons()
               ]),
             ),
           );
-        },
-      ),
+      })
     );
   }
 
   Future<void> getCompanyList() async {
-    final result = await GetIt.instance
-        .get<APIManager>()
-        .GET(APIManager.URI_COMPANY, {"name": ""}) as List;
+    final result = await GetIt.instance.get<APIManager>().GET(
+        APIManager.URI_COMPANY, {"name": ""}) as List;
 
     companyList = result.map((e) => Company.byResult(e)).toList();
 
+    final buyResult = await GetIt.instance.get<APIManager>().GET("${APIManager.URI_BUY}/id", {"id" : widget.dto.buyId});
+    buyRespDto = BuyRespDto.byResult(buyResult);
+
     return;
   }
-
+  
   Widget buyBody() {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border.all(
+          width: 1.0,
+          color: Colors.black
+        )
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: SingleChildScrollView(
+          child: Column(
+            children: [
+              getLabel("구매처", buyRespDto.name),
+              getLabel("구매일자", buyRespDto.buyTime),
+              getLabel("호수", buyRespDto.size.toString()),
+              getLabel("수량", buyRespDto.count.toString()),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+  
+
+  Widget workBody() {
     return Column(
       children: [
-        getDropDown(_TextFormType.buyName),
-        getDateSeletor(_TextFormType.buyTime),
-        getInput(_TextFormType.size),
-        getInput(_TextFormType.sizePrice),
+        getDropDown(_TextFormType.workName),
+        getDateSeletor(_TextFormType.workTime),
         getInput(_TextFormType.count),
+        getInput(_TextFormType.price),
       ],
     );
   }
@@ -118,7 +136,17 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
             backgroundColor: Colors.lightGreen,
           ),
           child: Text(
-            "추가",
+            "수정",
+            style: StyleConstant.buttonTextStyle,
+          ),
+        ),
+        ElevatedButton(
+          onPressed: deleteButton,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+          ),
+          child: Text(
+            "삭제",
             style: StyleConstant.buttonTextStyle,
           ),
         ),
@@ -135,6 +163,33 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
           ),
         ),
       ],
+    );
+  }
+  Widget getLabel(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                label,
+                textAlign: TextAlign.end,
+                style: StyleConstant.textStyle,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 8,
+            child: Text(
+              value,
+              style: StyleConstant.textStyle
+            ),
+          )
+        ],
+      ),
     );
   }
 
@@ -229,14 +284,15 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
                   icon: const Icon(Icons.density_small),
                   items: companyList
                       .map(
-                        (e) => DropdownMenuItem(
+                        (e) =>
+                        DropdownMenuItem(
                           value: e.name,
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
                             child: Text(e.name),
                           ),
                         ),
-                      )
+                  )
                       .toList(),
                   onChanged: (value) {
                     ctlList[type.pos]!.text = value!;
@@ -261,59 +317,45 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
 
     if (selected != null) {
       setState(() {
-        ctlList[_TextFormType.buyTime.pos]!.text =
+        ctlList[_TextFormType.workTime.pos]!.text =
             DateFormat("yyyy-MM-dd").format(selected);
       });
     }
   }
-
-  void addButton() async {
-    int size = int.parse(ctlList[_TextFormType.size.pos]!.text);
-    double sizePrice = ctlList[_TextFormType.sizePrice.pos]!.text == ""
-        ? size / 10
-        : double.parse(ctlList[_TextFormType.sizePrice.pos]!.text);
-
-    final result = await GetIt.instance.get<APIManager>().GET(
-          APIManager.URI_PRICE,
-          PriceSelectRequestDto(
-            ctlList[_TextFormType.buyName.pos]!.text,
-            ctlList[_TextFormType.buyTime.pos]!.text,
-          ).toJson(),
-        );
-
-    if (result == "" || result == null) {
-      Fluttertoast.showToast(
-          msg: "시세 페이지를 확인해주세요.",
-          toastLength: Toast.LENGTH_LONG,
-          gravity: ToastGravity.CENTER);
-      return;
-    }
-
-    PriceDto priceDto = PriceDto.byResult(result as Map);
-
-    int price = PriceUtil.getTotalPrice(
-        marketPrice: priceDto.marketPrice,
-        lotPrice: priceDto.lotPrice,
-        loadingPrice: priceDto.loadingPrice,
-        sizePrice: sizePrice,
-        floatRound: floatRound);
-
-    int count = int.parse(ctlList[_TextFormType.count.pos]!.text);
-
-    BuyInsertReqDto dto = BuyInsertReqDto(
-      ctlList[_TextFormType.buyName.pos]!.text,
-      ctlList[_TextFormType.buyTime.pos]!.text,
-      size,
-      count,
-      price,
-      count * price,
-      widget.createdOn,
-    );
+  
+  void deleteButton() async {
+    await GetIt.instance.get<APIManager>().DELETE(APIManager.URI_WORK, {"id": widget.dto.id});
 
     if (!mounted) {
       return;
     }
 
-    Navigator.of(context).pop(dto);
+    Navigator.of(context).pop(null);
+  }
+
+  void addButton() async {
+    String name = ctlList[_TextFormType.workName.pos]!.text;
+    String workTime = ctlList[_TextFormType.workTime.pos]!.text;
+    int price = int.parse(ctlList[_TextFormType.price.pos]!.text);
+    int count = int.parse(ctlList[_TextFormType.count.pos]!.text);
+
+    WorkRespDto workRespDto = widget.dto;
+
+    WorkUpdateRequestDto dto = WorkUpdateRequestDto(
+        workRespDto.id,
+        name,
+        workTime,
+        buyRespDto.size,
+        count,
+        price,
+        count * price);
+
+    await GetIt.instance.get<APIManager>().POST(APIManager.URI_WORK, dto.toJson());
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.of(context).pop(null);
   }
 }

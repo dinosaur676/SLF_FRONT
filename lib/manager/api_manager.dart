@@ -5,7 +5,8 @@ import 'package:http/http.dart' as http;
 import 'package:slf_front/setting.dart';
 
 class APIManager {
-  static const String URI_CHICKEN = "/api/chicken";
+  static const String URI_CHICKEN_PRODUCTION = "/api/chicken-production";
+  static const String URI_CHICKEN_SELL = "/api/chicken-sell";
   static const String URI_PRICE = "/api/price";
   static const String URI_COMPANY = "/api/company";
   static const String URI_BUY = "/api/buy";

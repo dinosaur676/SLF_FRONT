@@ -5,17 +5,17 @@ import 'package:intl/intl.dart';
 import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/model/company.dart';
 import 'package:slf_front/model/dto/buy/buy_insert_req_dto.dart';
+import 'package:slf_front/model/dto/chicken_production/chicken_prod_insert_request_dto.dart';
 import 'package:slf_front/model/dto/price/price_dto.dart';
 import 'package:slf_front/model/dto/price/price_request_dto.dart';
 import 'package:slf_front/util/constant.dart';
 import 'package:slf_front/util/price_utils.dart';
 
 enum _TextFormType {
-  buyName("구매처", 0),
-  buyTime("구매일자", 1),
-  size("호수", 2),
-  sizePrice("호수 단가", 3),
-  count("수량", 4);
+  prodName("생산처", 0),
+  count("수량", 1),
+  price("가격", 2),
+  type("종류", 4);
 
   const _TextFormType(this.label, this.pos);
 
@@ -23,19 +23,22 @@ enum _TextFormType {
   final int pos;
 }
 
-class BuyAddDialog extends StatefulWidget {
+class ChickenProdInsertDialog extends StatefulWidget {
+  String parts;
   String createdOn;
 
-  BuyAddDialog({
+  ChickenProdInsertDialog({
     Key? key,
+    required this.parts,
     required this.createdOn,
   }) : super(key: key);
 
   @override
-  State<BuyAddDialog> createState() => _BuyAddDialogState();
+  State<ChickenProdInsertDialog> createState() =>
+      _ChickenProdInsertDialogState();
 }
 
-class _BuyAddDialogState extends State<BuyAddDialog> {
+class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
   List<Company> companyList = [];
   final List<_TextFormType> types = _TextFormType.values.map((e) => e).toList();
 
@@ -43,7 +46,7 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
     for (var element in types) element.pos: TextEditingController()
   };
 
-  bool floatRound = false;
+  bool isView = false;
 
   @override
   Widget build(BuildContext context) {
@@ -51,8 +54,7 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
       child: FutureBuilder(
         future: getCompanyList(),
         builder: (context, snapshot) {
-
-          if(snapshot.connectionState != ConnectionState.done) {
+          if (snapshot.connectionState != ConnectionState.done) {
             return const Center(
               child: CircularProgressIndicator(),
             );
@@ -63,19 +65,6 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                Row(
-                  children: [
-                    Checkbox(
-                      value: floatRound,
-                      onChanged: (value) {
-                        setState(() {
-                          floatRound = value!;
-                        });
-                      },
-                    ),
-                    const Text("소수 반올림"),
-                  ],
-                ),
                 buyBody(),
                 buttons()
               ]),
@@ -99,11 +88,10 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
   Widget buyBody() {
     return Column(
       children: [
-        getDropDown(_TextFormType.buyName),
-        getDateSeletor(_TextFormType.buyTime),
-        getInput(_TextFormType.size),
-        getInput(_TextFormType.sizePrice),
+        getDropDown(_TextFormType.prodName),
         getInput(_TextFormType.count),
+        if(isView) getInput(_TextFormType.price),
+        getTypeDropDown(_TextFormType.type),
       ],
     );
   }
@@ -165,7 +153,7 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
     );
   }
 
-  Widget getDateSeletor(_TextFormType type) {
+  Widget getTypeDropDown(_TextFormType type) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Row(
@@ -185,15 +173,32 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
             flex: 8,
             child: Row(
               children: [
-                Expanded(
-                  child: TextFormField(
-                    readOnly: true,
-                    controller: ctlList[type.pos],
-                  ),
+                DropdownButton(
+                  value: ctlList[type.pos]!.text == "" ? null : ctlList[type.pos]!.text,
+                  icon: const Icon(Icons.density_small),
+                  items: ["생산", "구매"]
+                      .map(
+                        (e) => DropdownMenuItem(
+                          value: e,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(e),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    ctlList[type.pos]!.text = value!;
+                    setState(() {
+                      if(value == "생산") {
+                        isView = false;
+                      }
+                      else {
+                        isView = true;
+                      }
+                    });
+                  },
                 ),
-                IconButton(
-                    onPressed: onBuyDateSelect,
-                    icon: const Icon(Icons.date_range))
               ],
             ),
           ),
@@ -251,69 +256,26 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
     );
   }
 
-  void onBuyDateSelect() async {
-    final DateTime? selected = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now().add(const Duration(days: 100)),
-    );
-
-    if (selected != null) {
-      setState(() {
-        ctlList[_TextFormType.buyTime.pos]!.text =
-            DateFormat("yyyy-MM-dd").format(selected);
-      });
-    }
-  }
-
   void addButton() async {
-    int size = int.parse(ctlList[_TextFormType.size.pos]!.text);
-    double sizePrice = ctlList[_TextFormType.sizePrice.pos]!.text == ""
-        ? size / 10
-        : double.parse(ctlList[_TextFormType.sizePrice.pos]!.text);
+    double count = ctlList[_TextFormType.count.pos]!.text == "" ? 0.0 : double.parse(ctlList[_TextFormType.count.pos]!.text);
+    int price = ctlList[_TextFormType.price.pos]!.text == "" ? 0 : int.parse(ctlList[_TextFormType.price.pos]!.text);
 
-    final result = await GetIt.instance.get<APIManager>().GET(
-          APIManager.URI_PRICE,
-          PriceSelectRequestDto(
-            ctlList[_TextFormType.buyName.pos]!.text,
-            ctlList[_TextFormType.buyTime.pos]!.text,
-          ).toJson(),
-        );
-
-    if (result == "" || result == null) {
-      Fluttertoast.showToast(
-          msg: "시세 페이지를 확인해주세요.",
-          toastLength: Toast.LENGTH_LONG,
-          gravity: ToastGravity.CENTER);
-      return;
-    }
-
-    PriceDto priceDto = PriceDto.byResult(result as Map);
-
-    int price = PriceUtil.getTotalPrice(
-        marketPrice: priceDto.marketPrice,
-        lotPrice: priceDto.lotPrice,
-        loadingPrice: priceDto.loadingPrice,
-        sizePrice: sizePrice,
-        floatRound: floatRound);
-
-    int count = int.parse(ctlList[_TextFormType.count.pos]!.text);
-
-    BuyInsertReqDto dto = BuyInsertReqDto(
-      ctlList[_TextFormType.buyName.pos]!.text,
-      ctlList[_TextFormType.buyTime.pos]!.text,
-      size,
+    ChickenProdInsertReqDto dto = ChickenProdInsertReqDto(
+      widget.parts,
+      ctlList[_TextFormType.prodName.pos]!.text,
       count,
       price,
-      count * price,
+      (count * price) as int,
+      ctlList[_TextFormType.type.pos]!.text,
       widget.createdOn,
     );
+
+    await GetIt.instance.get<APIManager>().PUT(APIManager.URI_CHICKEN_PRODUCTION, dto.toJson());
 
     if (!mounted) {
       return;
     }
 
-    Navigator.of(context).pop(dto);
+    Navigator.of(context).pop(null);
   }
 }

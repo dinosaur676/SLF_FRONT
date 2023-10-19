@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
-import 'package:slf_front/manager/price_manager.dart';
 import 'package:slf_front/model/company.dart';
 import 'package:slf_front/model/dto/company/company_req_dto.dart';
 import 'package:slf_front/model/dto/price/price_dto.dart';
