@@ -6,11 +6,16 @@ import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/model/company.dart';
 import 'package:slf_front/model/dto/buy/buy_insert_req_dto.dart';
 import 'package:slf_front/model/dto/chicken_production/chicken_prod_insert_request_dto.dart';
+import 'package:slf_front/model/dto/chicken_production/chicken_prod_resp_dto.dart';
+import 'package:slf_front/model/dto/chicken_sell/chicken_sell_resp_dto.dart';
 import 'package:slf_front/model/dto/price/price_dto.dart';
 import 'package:slf_front/model/dto/price/price_request_dto.dart';
 import 'package:slf_front/util/constant.dart';
 import 'package:slf_front/util/price_utils.dart';
 import 'package:slf_front/widget/chicken/prod/prod_constant.dart';
+import 'package:slf_front/widget/chicken/sell/dialog/sell_item_in_dialog.dart';
+
+import '../../../model/dto/chicken_production/chicken_prod_update_request_dto.dart';
 
 enum _TextFormType {
   prodName("생산처", 0),
@@ -24,22 +29,22 @@ enum _TextFormType {
   final int pos;
 }
 
-class ChickenProdInsertDialog extends StatefulWidget {
-  String parts;
-  String createdOn;
+class ChickenProdUpdateDialog extends StatefulWidget {
+  ChickenProdRespDto dto;
 
-  ChickenProdInsertDialog({
+
+  ChickenProdUpdateDialog({
     Key? key,
-    required this.parts,
-    required this.createdOn,
+    required this.dto,
   }) : super(key: key);
 
   @override
-  State<ChickenProdInsertDialog> createState() =>
-      _ChickenProdInsertDialogState();
+  State<ChickenProdUpdateDialog> createState() =>
+      ChickenProdUpdateDialogState();
 }
 
-class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
+class ChickenProdUpdateDialogState extends State<ChickenProdUpdateDialog> {
+  List<ChickenSellRespDto> sellRespDtoList = [];
   List<Company> companyList = [];
   final List<_TextFormType> types = _TextFormType.values.map((e) => e).toList();
 
@@ -47,7 +52,25 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
     for (var element in types) element.pos: TextEditingController()
   };
 
+  int currentPage = 0;
+  PageController pageController = PageController();
+
   bool isView = false;
+
+  @override
+  void initState() {
+    // TODO: implement initState
+    super.initState();
+
+    ctlList[_TextFormType.prodName.pos]!.text = widget.dto.name;
+    ctlList[_TextFormType.count.pos]!.text = widget.dto.count.toString();
+    ctlList[_TextFormType.price.pos]!.text = widget.dto.price.toString();
+    ctlList[_TextFormType.type.pos]!.text = widget.dto.type;
+
+    if(ctlList[_TextFormType.type.pos]!.text == "구매") {
+      isView = true;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +90,7 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
               padding: const EdgeInsets.all(8.0),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
                 buyBody(),
+                Expanded(child: sellBody()),
                 buttons()
               ]),
             ),
@@ -77,11 +101,16 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
   }
 
   Future<void> getCompanyList() async {
-    final result = await GetIt.instance
+    var result = await GetIt.instance
         .get<APIManager>()
         .GET(APIManager.URI_COMPANY, {"name": ""}) as List;
 
     companyList = result.map((e) => Company.byResult(e)).toList();
+
+    result = await GetIt.instance.get<APIManager>().GET("${APIManager.URI_CHICKEN_SELL}/prod-id", {"prodId": widget.dto.id});
+
+    sellRespDtoList = result.map((e) => ChickenSellRespDto.byResult(e)).toList();
+
 
     return;
   }
@@ -97,17 +126,80 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
     );
   }
 
+  Widget sellBody() {
+    pageController = PageController(initialPage: currentPage);
+    return Container(
+      decoration:
+      BoxDecoration(border: Border.all(width: 1.0, color: Colors.black)),
+      child: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: Row(
+          children: [
+            IconButton(
+              onPressed: () {
+                int totalPage = sellRespDtoList.length + 1;
+                currentPage = (currentPage - 1 + totalPage) % (totalPage);
+                pageController.animateToPage(currentPage,
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.fastLinearToSlowEaseIn);
+              },
+              icon: const Icon(Icons.chevron_left),
+            ),
+            Expanded(
+              child: PageView.builder(
+                controller: pageController,
+                itemCount: sellRespDtoList.length + 1,
+                itemBuilder: (context, index) {
+                  if (index < sellRespDtoList.length) {
+                    return SellItemInDialog(
+                        prodRespDto: widget.dto,
+                        companyList: companyList,
+                        sellRespDto: sellRespDtoList[index]);
+                  } else {
+                    return SellItemInDialog(
+                        prodRespDto: widget.dto,
+                        companyList: companyList);
+                  }
+                },
+              ),
+            ),
+            IconButton(
+              onPressed: () {
+                int totalPage = sellRespDtoList.length + 1;
+                currentPage = (currentPage + 1) % totalPage;
+                pageController.animateToPage(currentPage,
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.fastLinearToSlowEaseIn);
+              },
+              icon: const Icon(Icons.chevron_right),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget buttons() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         ElevatedButton(
-          onPressed: addButton,
+          onPressed: updateButton,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.lightGreen,
           ),
           child: Text(
-            "추가",
+            "수정",
+            style: StyleConstant.buttonTextStyle,
+          ),
+        ),
+        ElevatedButton(
+          onPressed: deleteButton,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+          ),
+          child: Text(
+            "삭제",
             style: StyleConstant.buttonTextStyle,
           ),
         ),
@@ -180,13 +272,13 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
                   items: ProdConstant.typeList
                       .map(
                         (e) => DropdownMenuItem(
-                          value: e,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(e),
-                          ),
-                        ),
-                      )
+                      value: e,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(e),
+                      ),
+                    ),
+                  )
                       .toList(),
                   onChanged: (value) {
                     ctlList[type.pos]!.text = value!;
@@ -236,13 +328,13 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
                   items: companyList
                       .map(
                         (e) => DropdownMenuItem(
-                          value: e.name,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(e.name),
-                          ),
-                        ),
-                      )
+                      value: e.name,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(e.name),
+                      ),
+                    ),
+                  )
                       .toList(),
                   onChanged: (value) {
                     ctlList[type.pos]!.text = value!;
@@ -257,31 +349,35 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
     );
   }
 
-  void addButton() async {
-    double count = ctlList[_TextFormType.count.pos]!.text == "" ? 0.0 : double.parse(ctlList[_TextFormType.count.pos]!.text);
-    int price = ctlList[_TextFormType.price.pos]!.text == "" ? 0 : int.parse(ctlList[_TextFormType.price.pos]!.text);
+  void deleteButton() async {
+    await GetIt.instance.get<APIManager>().DELETE(APIManager.URI_CHICKEN_PRODUCTION,
+        {"id": widget.dto.id});
 
-    if(ctlList[_TextFormType.prodName.pos]!.text == "" || ctlList[_TextFormType.type.pos]!.text == "") {
-      Fluttertoast.showToast(msg: "값을 입력해주세요.", toastLength: Toast.LENGTH_LONG, gravity: ToastGravity.CENTER);
+    if (!mounted) {
       return;
     }
+
+    Navigator.of(context).pop(null);
+  }
+
+  void updateButton() async {
+    double count = ctlList[_TextFormType.count.pos]!.text == "" ? 0.0 : double.parse(ctlList[_TextFormType.count.pos]!.text);
+    int price = ctlList[_TextFormType.price.pos]!.text == "" ? 0 : int.parse(ctlList[_TextFormType.price.pos]!.text);
 
     if(ctlList[_TextFormType.type.pos]!.text == "생산") {
       price = 0;
     }
 
-
-    ChickenProdInsertReqDto dto = ChickenProdInsertReqDto(
-      widget.parts,
+    ChickenProdUpdateReqDto dto = ChickenProdUpdateReqDto(
+      widget.dto.id,
       ctlList[_TextFormType.prodName.pos]!.text,
       count,
       price,
       (count * price) as int,
       ctlList[_TextFormType.type.pos]!.text,
-      widget.createdOn,
     );
 
-    await GetIt.instance.get<APIManager>().PUT(APIManager.URI_CHICKEN_PRODUCTION, dto.toJson());
+    await GetIt.instance.get<APIManager>().POST(APIManager.URI_CHICKEN_PRODUCTION, dto.toJson());
 
     if (!mounted) {
       return;

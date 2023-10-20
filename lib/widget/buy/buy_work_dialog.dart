@@ -75,12 +75,6 @@ class _ChickenWorkDialogState extends State<ChickenWorkDialog> {
   }
 
   void addButton() {
-    int count = widget.chickenManager.stockMap[ctlList[1].text] ?? 0;
-
-    if (double.parse(ctlList[2].text) > count) {
-      Fluttertoast.showToast(msg: "재고 부족", gravity: ToastGravity.CENTER);
-      return;
-    }
 
     Navigator.of(context).pop();
   }

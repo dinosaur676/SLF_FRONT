@@ -35,7 +35,6 @@ enum _TextFormType {
 }
 
 class _PricePageState extends State<PricePage> {
-  List test = [1, 2, 3];
   List<_TextFormType> types = [
     _TextFormType.marketPrice,
     _TextFormType.loadingPrice,
@@ -47,10 +46,16 @@ class _PricePageState extends State<PricePage> {
     for (var element in types) element.pos: TextEditingController()
   };
 
+  List<Company> companyList = [];
+
+
   String currentSelectDate = "";
   String selectedCompany = "";
 
   String searchName = "";
+  double scrollPosition = 0.0;
+
+  ScrollController scrollController = ScrollController();
 
   @override
   Widget build(BuildContext context) {
@@ -93,8 +98,7 @@ class _PricePageState extends State<PricePage> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          List<Company> companyList =
-              snapshot.data!.map((e) => Company(e["id"], e["name"])).toList();
+          scrollController = ScrollController(initialScrollOffset: scrollPosition);
 
           return Container(
             decoration: BoxDecoration(
@@ -129,12 +133,18 @@ class _PricePageState extends State<PricePage> {
                 ),
                 Expanded(
                   child: ListView.builder(
+                    controller: scrollController,
                     scrollDirection: Axis.vertical,
                     itemCount: companyList.length,
                     itemBuilder: (context, index) {
                       Color color = Colors.white;
+
                       if (selectedCompany == companyList[index].name) {
                         color = Colors.red;
+                      }
+
+                      if(companyList[index].name == "이푸드" || companyList[index].name == "재고") {
+                        color = Colors.grey;
                       }
 
                       return Material(
@@ -143,7 +153,7 @@ class _PricePageState extends State<PricePage> {
                           onLongPress: () => onLongPressedCompany(
                               companyList[index].id, companyList[index].name),
                           onTap: () =>
-                              onSelectedCompany(companyList[index].name),
+                              onSelectedCompany(index / companyList.length, companyList[index].name),
                           child: Center(
                             child: Padding(
                               padding: const EdgeInsets.all(12.0),
@@ -336,15 +346,15 @@ class _PricePageState extends State<PricePage> {
     return result;
   }
 
-  Future<List> getCompanyListData() async {
-    List data = [];
-
-    data = await GetIt.instance.get<APIManager>().GET(
+  Future<void> getCompanyListData() async {
+    final result = await GetIt.instance.get<APIManager>().GET(
       APIManager.URI_COMPANY,
       {"name": searchName},
     ) as List;
 
-    return data;
+    companyList = result.map((e) => Company.byResult(e)).toList();
+
+    return;
   }
 
   void onInsertDataButton() async {
@@ -385,22 +395,39 @@ class _PricePageState extends State<PricePage> {
         });
 
     if (result != null) {
-      GetIt.instance.get<APIManager>().PUT(
-        APIManager.URI_COMPANY,
-        {"name": result},
-      );
-    }
+      List<String> check = companyList.map((e) => e.name).where((element) => element == result).toList();
 
-    setState(() {});
+      if(check.isEmpty) {
+        GetIt.instance.get<APIManager>().PUT(
+          APIManager.URI_COMPANY,
+          {"name": result},
+        );
+
+        setState(() {});
+      }
+    }
   }
 
-  void onSelectedCompany(String name) {
+  void onSelectedCompany(double pos, String name) {
+
+    if(name == "이푸드" || name == "재고") {
+      return;
+    }
+
+    scrollPosition = scrollController.position.maxScrollExtent * pos;
+
+
     setState(() {
       selectedCompany = name;
     });
   }
 
   void onLongPressedCompany(int id, String name) async {
+
+    if(name == "이푸드" || name == "재고") {
+      return;
+    }
+
     String before = name;
 
     final result = await showDialog(
@@ -413,6 +440,11 @@ class _PricePageState extends State<PricePage> {
       CompanyReturnType returnType = result["returnType"];
 
       if (returnType == CompanyReturnType.update) {
+
+        if(result["name"] == "이푸드" || result["name"] == "재고") {
+          return;
+        }
+
         CompanyUpdateReqDto dto = CompanyUpdateReqDto(before, result["name"]);
         GetIt.instance
             .get<APIManager>()

@@ -8,6 +8,7 @@ import 'package:slf_front/model/dto/buy/buy_insert_req_dto.dart';
 import 'package:slf_front/model/dto/buy/buy_resp_dto.dart';
 import 'package:slf_front/model/dto/price/price_dto.dart';
 import 'package:slf_front/model/dto/price/price_request_dto.dart';
+import 'package:slf_front/model/dto/work/work_update_request_dto.dart';
 import 'package:slf_front/util/constant.dart';
 import 'package:slf_front/util/price_utils.dart';
 import 'package:slf_front/widget/work/work_item_in_dialog.dart';
@@ -46,7 +47,7 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
     for (var element in types) element.pos: TextEditingController()
   };
 
-  PageController pageController = PageController(initialPage: 0);
+  PageController pageController = PageController();
   int currentPage = 0;
   bool floatRound = false;
 
@@ -118,6 +119,7 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
   }
 
   Widget workBody() {
+    pageController = PageController(initialPage: currentPage);
     return Container(
       decoration:
           BoxDecoration(border: Border.all(width: 1.0, color: Colors.black)),
@@ -129,7 +131,9 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
               onPressed: () {
                 int totalPage = workRespDtoList.length + 1;
                 currentPage = (currentPage - 1 + totalPage) % (totalPage);
-                pageController.animateToPage(currentPage, duration: const Duration(milliseconds: 500), curve: Curves.fastLinearToSlowEaseIn);
+                pageController.animateToPage(currentPage,
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.fastLinearToSlowEaseIn);
               },
               icon: const Icon(Icons.chevron_left),
             ),
@@ -155,7 +159,9 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
               onPressed: () {
                 int totalPage = workRespDtoList.length + 1;
                 currentPage = (currentPage + 1) % totalPage;
-                pageController.animateToPage(currentPage, duration: const Duration(milliseconds: 500), curve: Curves.fastLinearToSlowEaseIn);
+                pageController.animateToPage(currentPage,
+                    duration: const Duration(milliseconds: 500),
+                    curve: Curves.fastLinearToSlowEaseIn);
               },
               icon: const Icon(Icons.chevron_right),
             ),
@@ -170,12 +176,22 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         ElevatedButton(
-          onPressed: addButton,
+          onPressed: updateButton,
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.lightGreen,
           ),
           child: Text(
             "수정",
+            style: StyleConstant.buttonTextStyle,
+          ),
+        ),
+        ElevatedButton(
+          onPressed: deleteButton,
+          style: ElevatedButton.styleFrom(
+            backgroundColor: Colors.red,
+          ),
+          child: Text(
+            "삭제",
             style: StyleConstant.buttonTextStyle,
           ),
         ),
@@ -339,7 +355,7 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
     }
   }
 
-  void addButton() async {
+  void updateButton() async {
     int size = int.parse(ctlList[_TextFormType.size.pos]!.text);
     double sizePrice = ctlList[_TextFormType.sizePrice.pos]!.text == ""
         ? size / 10
@@ -386,10 +402,41 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
         .get<APIManager>()
         .POST(APIManager.URI_BUY, dto.toJson());
 
+    if (widget.buyRespDto.size != size) {
+      for (WorkRespDto workRespDto in workRespDtoList) {
+        await GetIt.instance.get<APIManager>().POST(
+              APIManager.URI_WORK,
+              WorkUpdateRequestDto(
+                workRespDto.id,
+                workRespDto.name,
+                workRespDto.workTime,
+                size,
+                workRespDto.count,
+                workRespDto.price,
+                workRespDto.total,
+              ).toJson(),
+            );
+      }
+    }
+
     if (!mounted) {
       return;
     }
 
     Navigator.of(context).pop(dto);
+  }
+
+  void deleteButton() async {
+    await GetIt.instance.get<APIManager>().DELETE(APIManager.URI_BUY, {"id": widget.buyRespDto.id});
+
+    for(WorkRespDto workRespDto in workRespDtoList) {
+      await GetIt.instance.get<APIManager>().DELETE(APIManager.URI_WORK, {"id": workRespDto.id});
+    }
+
+    if (!mounted) {
+      return;
+    }
+
+    Navigator.of(context).pop(null);
   }
 }

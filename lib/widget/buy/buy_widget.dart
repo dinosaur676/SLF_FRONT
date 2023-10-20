@@ -15,6 +15,7 @@ import 'package:slf_front/util/constant.dart';
 import 'package:slf_front/util/param_util.dart';
 import 'package:slf_front/widget/buy/dialog/buy_add_dialog.dart';
 import 'package:slf_front/widget/buy/dialog/buy_update_dialog.dart';
+import 'package:slf_front/widget/date_date_update_dialog.dart';
 
 class BuyWidget extends StatefulWidget {
   const BuyWidget({
@@ -67,6 +68,7 @@ class _BuyWidgetState extends State<BuyWidget> {
               _Top(
                 onPressed: onTopPressed,
                 createList: buyList,
+                onUpdateDate: onUpdateDate,
               ),
               if (isOpen) body()
             ],
@@ -82,8 +84,11 @@ class _BuyWidgetState extends State<BuyWidget> {
 
     buyList = result.map((e) => BuyRespDto.byResult(e)).toList();
 
-    final resultWork = await GetIt.instance.get<APIManager>().GET(APIManager.URI_WORK, param) as List;
-    List<WorkRespDto> workRespList = resultWork.map((e) => WorkRespDto.byResult(e)).toList();
+    final resultWork = await GetIt.instance
+        .get<APIManager>()
+        .GET(APIManager.URI_WORK, param) as List;
+    List<WorkRespDto> workRespList =
+        resultWork.map((e) => WorkRespDto.byResult(e)).toList();
 
     _tableManager.tableStockMap[ChickenParts.BUY_COUNT] = buyList.fold(
         0, (previousValue, element) => previousValue + element.count);
@@ -91,18 +96,56 @@ class _BuyWidgetState extends State<BuyWidget> {
         0, (previousValue, element) => previousValue + element.total);
 
     _tableManager.tableStockMap[ChickenParts.CHICKEN] =
-        _tableManager.tableStockMap[ChickenParts.BUY_COUNT] - workRespList.fold(0, (previousValue, element) => previousValue + element.count);
+        _tableManager.tableStockMap[ChickenParts.BUY_COUNT] -
+            workRespList.fold(
+                0, (previousValue, element) => previousValue + element.count);
 
     Map<int, int> chickenPriceTempMap = {};
 
-    for(var buy in buyList) {
+    for (var buy in buyList) {
       chickenPriceTempMap[buy.id] = buy.price;
     }
 
-    _tableManager.tableStockMap[ChickenParts.WORKED_CHICKEN_PRICE] = workRespList.fold(0, (previousValue, element) {
-      return previousValue + (element.count * chickenPriceTempMap[element.buyId]!);
+    _tableManager.tableStockMap[ChickenParts.WORKED_CHICKEN_PRICE] =
+        workRespList.fold(0, (previousValue, element) {
+      return previousValue +
+          (element.count * chickenPriceTempMap[element.buyId]!);
     });
 
+    _tableManager.tableStockMap[ChickenParts.BUY_SUB_PRICE_TOTAL] =
+        _tableManager.tableStockMap[ChickenParts.BUY_TOTAL] -
+            _tableManager.tableStockMap[ChickenParts.WORKED_CHICKEN_PRICE];
+
+    List<String> keyList = _tableManager.tableStockMap.entries.where((element) {
+      String key = element.key;
+
+      if(key.indexOf(ChickenParts.STOCK) == 0) {
+        return true;
+      }
+
+      return false;
+    }).map((e) => (e.key as String)).toList();
+
+    for(String key in keyList) {
+      _tableManager.tableStockMap[key] = 0;
+    }
+
+    for (var buyDto in buyList) {
+      String key = ChickenParts.STOCK + buyDto.size.toString();
+      _tableManager.tableStockMap[key] = _tableManager.tableStockMap[key] ?? 0;
+
+      _tableManager.tableStockMap[key] += buyDto.count;
+    }
+
+    for (var workDto in workRespList) {
+      String key = ChickenParts.STOCK + workDto.size.toString();
+
+      if (_tableManager.tableStockMap[key] == null) {
+        continue;
+      }
+
+      _tableManager.tableStockMap[key] -= workDto.count;
+    }
 
     _tableManager.updateView();
     return;
@@ -179,6 +222,21 @@ class _BuyWidgetState extends State<BuyWidget> {
     _buyManager.updateView();
 
     return;
+  }
+
+  void onUpdateDate() async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return DateUpdateDialog(createdOn: _dateManager.selectTime);
+      },
+    );
+
+    setState(() {
+
+    });
+
+    _buyManager.updateView();
   }
 }
 
@@ -272,21 +330,26 @@ class _BuyTable extends StatelessWidget {
 class _Top extends StatelessWidget {
   final VoidCallback onPressed;
   final List createList;
+  final void Function() onUpdateDate;
 
   _Top({
     Key? key,
     required this.createList,
     required this.onPressed,
+    required this.onUpdateDate,
   }) : super(key: key);
 
   late BuyManager _buyManager;
 
+  late DateManager _dateManager;
+
   @override
   Widget build(BuildContext context) {
     _buyManager = Provider.of<BuyManager>(context, listen: false);
+    _dateManager = Provider.of<DateManager>(context, listen: false);
 
     return Padding(
-      padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
       child: Column(
         children: [
           IntrinsicHeight(
@@ -302,6 +365,22 @@ class _Top extends StatelessWidget {
                         onPressed: onFinish,
                         child: const Text(
                           "적용",
+                          style: TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(
+                        width: 20,
+                      ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.lightGreen),
+                        onPressed: onUpdateDate,
+                        child: const Text(
+                          "전체 관리",
                           style: TextStyle(
                             fontSize: 28,
                             fontWeight: FontWeight.w500,
@@ -329,10 +408,14 @@ class _Top extends StatelessWidget {
                             "원"),
                         const VerticalDivider(thickness: 1),
                         valueText(
+                            "남은 금액",
+                            '${context.watch<TableManager>().tableStockMap[ChickenParts.BUY_SUB_PRICE_TOTAL]}',
+                            "원"),
+                        const VerticalDivider(thickness: 1),
+                        valueText(
                             "구매 금액",
                             '${context.watch<TableManager>().tableStockMap[ChickenParts.BUY_TOTAL]}',
                             "원"),
-
                         Padding(
                           padding: const EdgeInsets.only(left: 30.0),
                           child: OutlinedButton(

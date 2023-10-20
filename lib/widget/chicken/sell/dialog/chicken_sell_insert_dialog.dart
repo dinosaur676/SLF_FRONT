@@ -6,17 +6,17 @@ import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/model/company.dart';
 import 'package:slf_front/model/dto/buy/buy_insert_req_dto.dart';
 import 'package:slf_front/model/dto/chicken_production/chicken_prod_insert_request_dto.dart';
+import 'package:slf_front/model/dto/chicken_sell/chicken_sell_insert_req_dto.dart';
 import 'package:slf_front/model/dto/price/price_dto.dart';
 import 'package:slf_front/model/dto/price/price_request_dto.dart';
 import 'package:slf_front/util/constant.dart';
 import 'package:slf_front/util/price_utils.dart';
-import 'package:slf_front/widget/chicken/prod/prod_constant.dart';
 
 enum _TextFormType {
-  prodName("생산처", 0),
-  count("수량", 1),
-  price("가격", 2),
-  type("종류", 4);
+  prodName("판매처", 0),
+  count("출고량", 1),
+  price("단가", 2),
+  type("종류", 3);
 
   const _TextFormType(this.label, this.pos);
 
@@ -24,22 +24,22 @@ enum _TextFormType {
   final int pos;
 }
 
-class ChickenProdInsertDialog extends StatefulWidget {
+class ChickenSellInsertDialog extends StatefulWidget {
   String parts;
   String createdOn;
 
-  ChickenProdInsertDialog({
+  ChickenSellInsertDialog({
     Key? key,
     required this.parts,
     required this.createdOn,
   }) : super(key: key);
 
   @override
-  State<ChickenProdInsertDialog> createState() =>
-      _ChickenProdInsertDialogState();
+  State<ChickenSellInsertDialog> createState() =>
+      _ChickenSellInsertDialogState();
 }
 
-class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
+class _ChickenSellInsertDialogState extends State<ChickenSellInsertDialog> {
   List<Company> companyList = [];
   final List<_TextFormType> types = _TextFormType.values.map((e) => e).toList();
 
@@ -48,6 +48,12 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
   };
 
   bool isView = false;
+
+  @override
+  void initState() {
+    ctlList[_TextFormType.type.pos]!.text = "판매";
+    isView = true;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -65,10 +71,9 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
             widthFactor: 0.4,
             child: Padding(
               padding: const EdgeInsets.all(8.0),
-              child: Column(mainAxisSize: MainAxisSize.min, children: [
-                buyBody(),
-                buttons()
-              ]),
+              child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [buyBody(), buttons()]),
             ),
           );
         },
@@ -92,7 +97,7 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
         getDropDown(_TextFormType.prodName),
         getInput(_TextFormType.count),
         if(isView) getInput(_TextFormType.price),
-        getTypeDropDown(_TextFormType.type),
+        getTypeDropDown(_TextFormType.type)
       ],
     );
   }
@@ -177,25 +182,25 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
                 DropdownButton(
                   value: ctlList[type.pos]!.text == "" ? null : ctlList[type.pos]!.text,
                   icon: const Icon(Icons.density_small),
-                  items: ProdConstant.typeList
+                  items: ["작업", "판매"]
                       .map(
                         (e) => DropdownMenuItem(
-                          value: e,
-                          child: Padding(
-                            padding: const EdgeInsets.all(8.0),
-                            child: Text(e),
-                          ),
-                        ),
-                      )
+                      value: e,
+                      child: Padding(
+                        padding: const EdgeInsets.all(8.0),
+                        child: Text(e),
+                      ),
+                    ),
+                  )
                       .toList(),
                   onChanged: (value) {
                     ctlList[type.pos]!.text = value!;
                     setState(() {
-                      if(value == "구매") {
-                        isView = true;
+                      if(value == "작업") {
+                        isView = false;
                       }
                       else {
-                        isView = false;
+                        isView = true;
                       }
                     });
                   },
@@ -258,30 +263,39 @@ class _ChickenProdInsertDialogState extends State<ChickenProdInsertDialog> {
   }
 
   void addButton() async {
-    double count = ctlList[_TextFormType.count.pos]!.text == "" ? 0.0 : double.parse(ctlList[_TextFormType.count.pos]!.text);
-    int price = ctlList[_TextFormType.price.pos]!.text == "" ? 0 : int.parse(ctlList[_TextFormType.price.pos]!.text);
+    double count = ctlList[_TextFormType.count.pos]!.text == ""
+        ? 0.0
+        : double.parse(ctlList[_TextFormType.count.pos]!.text);
+    int price = ctlList[_TextFormType.price.pos]!.text == ""
+        ? 0
+        : int.parse(ctlList[_TextFormType.price.pos]!.text);
 
-    if(ctlList[_TextFormType.prodName.pos]!.text == "" || ctlList[_TextFormType.type.pos]!.text == "") {
-      Fluttertoast.showToast(msg: "값을 입력해주세요.", toastLength: Toast.LENGTH_LONG, gravity: ToastGravity.CENTER);
+    if (ctlList[_TextFormType.prodName.pos]!.text == "") {
+      Fluttertoast.showToast(
+          msg: "값을 입력해주세요.",
+          toastLength: Toast.LENGTH_LONG,
+          gravity: ToastGravity.CENTER);
       return;
     }
 
-    if(ctlList[_TextFormType.type.pos]!.text == "생산") {
+    if(ctlList[_TextFormType.type.pos]!.text == "작업") {
       price = 0;
     }
 
-
-    ChickenProdInsertReqDto dto = ChickenProdInsertReqDto(
+    ChickenSellInsertReqDto dto = ChickenSellInsertReqDto(
       widget.parts,
       ctlList[_TextFormType.prodName.pos]!.text,
       count,
       price,
       (count * price) as int,
       ctlList[_TextFormType.type.pos]!.text,
+      0,
       widget.createdOn,
     );
 
-    await GetIt.instance.get<APIManager>().PUT(APIManager.URI_CHICKEN_PRODUCTION, dto.toJson());
+    await GetIt.instance
+        .get<APIManager>()
+        .PUT(APIManager.URI_CHICKEN_SELL, dto.toJson());
 
     if (!mounted) {
       return;

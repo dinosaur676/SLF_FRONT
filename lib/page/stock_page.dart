@@ -7,7 +7,16 @@ import 'package:provider/provider.dart';
 import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/manager/table_manager.dart';
 import 'package:slf_front/manager/date_manager.dart';
+import 'package:slf_front/model/dto/buy/buy_insert_req_dto.dart';
+import 'package:slf_front/model/dto/buy/buy_resp_dto.dart';
+import 'package:slf_front/model/dto/chicken_production/chicken_prod_insert_request_dto.dart';
+import 'package:slf_front/model/dto/chicken_production/chicken_prod_resp_dto.dart';
+import 'package:slf_front/model/dto/chicken_production/chicken_prod_select_reqeust_dto.dart';
+import 'package:slf_front/model/dto/chicken_sell/chicken_sell_resp_dto.dart';
+import 'package:slf_front/model/dto/chicken_sell/chicken_sell_select_req_dto.dart';
+import 'package:slf_front/model/dto/work/work_resp_dto.dart';
 import 'package:slf_front/util/chicken_parts.dart';
+import 'package:slf_front/util/constant.dart';
 import 'package:slf_front/util/param_keys.dart';
 import 'package:slf_front/util/param_util.dart';
 
@@ -61,6 +70,9 @@ class _StockPageState extends State<StockPage> {
     WidgetParam.createTitle(title: "목살", part: ChickenParts.NECK, mul: 0),
     WidgetParam.createTitle(title: "잡육", part: ChickenParts.ETC_MEAT, mul: 1),
   ];
+
+  List<BuyRespDto> buyList = [];
+  List<ChickenProdRespDto> prodList = [];
 
   List<TextEditingController> ctlList = [];
   List eventList = [];
@@ -167,17 +179,88 @@ class _StockPageState extends State<StockPage> {
 
   void onPressed() async {
     Fluttertoast.showToast(msg: "적용중", gravity: ToastGravity.CENTER);
+    await _calData();
+
     for (var event in eventList) {
-      await GetIt.instance.get<APIManager>().PUT(
-          APIManager.URI_CHICKEN_PRODUCTION,
-          ChickenParam.addItemParam(
-              event[ParamKeys.MAIN_KEY],
-              event[ParamKeys.SUB_KEY])
-      );
+      if(event is ChickenProdInsertReqDto) {
+        await GetIt.instance.get<APIManager>().PUT(APIManager.URI_CHICKEN_PRODUCTION, event.toJson());
+      }
+      else if(event is BuyInsertReqDto) {
+        await GetIt.instance.get<APIManager>().PUT(APIManager.URI_BUY, event.toJson());
+      }
     }
 
     Fluttertoast.showToast(msg: "적용 완료", gravity: ToastGravity.CENTER);
   }
+
+  Future<void> _calData() async {
+    var result = await GetIt.instance.get<APIManager>().GET(APIManager.URI_BUY, {"createdOn": _dateManager.selectTime}) as List;
+    buyList = result.map((e) => BuyRespDto.byResult(e)).toList();
+
+    result = await GetIt.instance.get<APIManager>().GET(APIManager.URI_CHICKEN_PRODUCTION, {"createdOn": _dateManager.selectTime}) as List;
+    prodList = result.map((e) => ChickenProdRespDto.byResult(e)).toList();
+
+    Map<int, int> chickenStockMap = await _getChiStock();
+    Map<int, double> partsStockMap = await _getProdStock();
+
+    for(BuyRespDto buyRespDto in buyList) {
+      if(chickenStockMap[buyRespDto.id] != 0) {
+        int count = chickenStockMap[buyRespDto.id]!;
+        int price = buyRespDto.price;
+        int total = count * price;
+        eventList.add(BuyInsertReqDto("재고", buyRespDto.buyTime, buyRespDto.size, count, price, total, stockDay));
+      }
+    }
+
+    for(ChickenProdRespDto prodRespDto in prodList) {
+      if(partsStockMap[prodRespDto.id]!.toInt() != 0) {
+        double count = partsStockMap[prodRespDto.id]!;
+        int price = prodRespDto.price;
+        int total = (count * price) as int;
+
+        eventList.add(ChickenProdInsertReqDto(prodRespDto.parts, prodRespDto.name, count, price, total, "재고", stockDay));
+      }
+    }
+  }
+  
+  Future<Map<int, int>> _getChiStock() async {
+    Map<int, int> output = {};
+    
+    for(BuyRespDto dto in buyList) {
+      final result = await GetIt.instance.get<APIManager>().GET("${APIManager.URI_WORK}/buy", {"buyId": dto.id}) as List;
+      List<WorkRespDto> workList = result.map((e) => WorkRespDto.byResult(e)).toList();
+
+      output[dto.id] = dto.count;
+
+      for(WorkRespDto workRespDto in workList) {
+        output[dto.id] = output[dto.id]! - workRespDto.count;
+      }
+    }
+    
+    
+    return output;
+  }
+
+  Future<Map<int, double>> _getProdStock() async {
+    Map<int, double> output = {};
+
+    for(ChickenProdRespDto dto in prodList) {
+      final result = await GetIt.instance.get<APIManager>().GET("${APIManager.URI_CHICKEN_SELL}/prod-id", {"prodId": dto.id}) as List;
+      List<ChickenSellRespDto> sellList = result.map((e) => ChickenSellRespDto.byResult(e)).toList();
+
+      output[dto.id] = dto.count;
+
+      for(ChickenSellRespDto sellRespDto in sellList) {
+        output[dto.id] = output[dto.id]! - sellRespDto.count;
+      }
+    }
+
+
+    return output;
+  }
+
+
+
 
   List getRows() {
     List output = [];
@@ -185,14 +268,24 @@ class _StockPageState extends State<StockPage> {
       return e[ParamKeys.PARTS];
     }).toList();
 
-    output =
-        _chickenManager.stockMap.entries.where((element) => element.value !=
-            0 && element.key != ChickenParts.CHICKEN).map((e) {
+    output = _chickenManager.tableStockMap.entries.where((element) {
+      bool output = false;
+      String key = element.key;
+
+      if(element.value != 0 && key.contains(ChickenParts.STOCK)) {
+        output = true;
+      }
+
+      return output;
+    }).map((e) {
           String label = "";
           int index = -1;
 
+          String key = e.key;
+          key = key.replaceAll(ChickenParts.STOCK, "");
+
           for (int i = 0; i < partKeyList.length; ++i) {
-            if (partKeyList[i] == e.key) {
+            if (partKeyList[i] == key) {
               index = i;
               break;
             }
@@ -201,7 +294,7 @@ class _StockPageState extends State<StockPage> {
           if (index != -1) {
             label = partList[index][ParamKeys.TITLE];
           } else {
-            label = "${e.key as String}호";
+            label = "${key}호";
           }
 
           return Row(
@@ -212,19 +305,13 @@ class _StockPageState extends State<StockPage> {
                 child: Text(
                   label,
                   textAlign: TextAlign.end,
-                  style: const TextStyle(
-                      fontSize: 28.0,
-                      fontWeight: FontWeight.w300,
-                      color: Colors.black),
+                  style: StyleConstant.textStyle,
                 ),
               ),
               Text(
                 "${e.value}kg",
                 textAlign: TextAlign.end,
-                style: const TextStyle(
-                    fontSize: 28.0,
-                    fontWeight: FontWeight.w300,
-                    color: Colors.black),
+                style: StyleConstant.textStyle,
               ),
               const VerticalDivider(
                 thickness: 1,
@@ -247,27 +334,5 @@ class _StockPageState extends State<StockPage> {
       return e[ParamKeys.PARTS];
     }).toList();
 
-    eventList =
-        _chickenManager.stockMap.entries.where((element) => element.value !=
-            0 && element.key != ChickenParts.CHICKEN).map((e) {
-          if (partKeyList.contains(e.key)) {
-            return getAPIMap(
-                e.key,
-                ChickenParts.CREATE);
-          }
-
-          return getAPIMap(
-              ChickenParts.BUY_COUNT,
-              ChickenParts.BUY_COUNT);
-        }).toList();
-  }
-
-  Map getAPIMap(String mainKey, String subKey) {
-    Map map = {};
-
-    map[ParamKeys.MAIN_KEY] = mainKey;
-    map[ParamKeys.SUB_KEY] = subKey;
-
-    return map;
   }
 }

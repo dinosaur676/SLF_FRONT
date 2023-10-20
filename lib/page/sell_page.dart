@@ -77,7 +77,7 @@ class _SellPageState extends State<SellPage> {
             child: Text(
               "구매 및 작업",
               textAlign: TextAlign.center,
-              style: StyleConstant.textStyle,
+              style: StyleConstant.labelStyleWeight,
             ),
           ),
         ),
@@ -104,7 +104,7 @@ class _Bottom extends StatelessWidget {
     return Column(
       children: [
         const Divider(height: 2, color: Colors.black,),
-        getRow("판매 합계 금액", "${_chickenManager.getTotalSell()}"),
+        getRow("판매 합계 금액", "${_chickenManager.getPartsTotal()}"),
         const Divider(thickness: 1,),
         getRow("구매(작업된 닭) 및 작업비 합계 금액", "${_chickenManager.getWorkedPrice()}"),
         const Divider(thickness: 1,),

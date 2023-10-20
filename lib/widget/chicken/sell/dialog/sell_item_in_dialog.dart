@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:get_it/get_it.dart';
-import 'package:intl/intl.dart';
 import 'package:slf_front/manager/api_manager.dart';
 import 'package:slf_front/model/company.dart';
-import 'package:slf_front/model/dto/buy/buy_resp_dto.dart';
+import 'package:slf_front/model/dto/chicken_production/chicken_prod_resp_dto.dart';
+import 'package:slf_front/model/dto/chicken_sell/chicken_sell_insert_req_dto.dart';
+import 'package:slf_front/model/dto/chicken_sell/chicken_sell_resp_dto.dart';
 import 'package:slf_front/model/dto/work/work_insert_request_dto.dart';
-import 'package:slf_front/model/dto/work/work_update_request_dto.dart';
 import 'package:slf_front/util/constant.dart';
-import 'package:slf_front/widget/buy/dialog/buy_update_dialog.dart';
+import 'package:slf_front/widget/chicken/prod/chicken_prod_update_dialog.dart';
+import 'package:slf_front/widget/chicken/sell/sell_constant.dart';
 
-import '../../model/dto/work/work_resp_dto.dart';
+import '../../../../model/dto/chicken_sell/chicken_sell_update_req_dto.dart';
 
 enum _TextFormType {
-  workName("작업처", 0),
-  workTime("작업일자", 1),
-  count("수량", 2),
-  price("가격", 3);
+  name("판매처", 0),
+  count("출고량", 1),
+  price("가격", 2),
+  type("종류", 3);
 
   const _TextFormType(this.label, this.pos);
 
@@ -23,43 +24,52 @@ enum _TextFormType {
   final int pos;
 }
 
-class WorkItemInDialog extends StatefulWidget {
-  BuyRespDto buyRespDto;
+class SellItemInDialog extends StatefulWidget {
+  ChickenProdRespDto prodRespDto;
   List<Company> companyList;
-  WorkRespDto? workRespDto;
+  ChickenSellRespDto? sellRespDto;
 
-  WorkItemInDialog(
+  SellItemInDialog(
       {Key? key,
-      required this.buyRespDto,
-      this.workRespDto,
+      required this.prodRespDto,
+      this.sellRespDto,
       required this.companyList})
       : super(key: key);
 
   @override
-  State<WorkItemInDialog> createState() => _WorkItemInDialogState();
+  State<SellItemInDialog> createState() => _SellItemInDialogState();
 }
 
-class _WorkItemInDialogState extends State<WorkItemInDialog> {
+class _SellItemInDialogState extends State<SellItemInDialog> {
   final List<_TextFormType> types = _TextFormType.values.map((e) => e).toList();
 
   late Map<int, TextEditingController> ctlList = {
     for (var element in types) element.pos: TextEditingController()
   };
 
-  late BuyUpdateDialogState buyUpdateDialogState =
-      context.findAncestorStateOfType<BuyUpdateDialogState>()!;
+  late ChickenProdUpdateDialogState prodUpdateDialogState =
+      context.findAncestorStateOfType<ChickenProdUpdateDialogState>()!;
+
+  bool isView = true;
 
   @override
   void initState() {
     super.initState();
 
-    if (widget.workRespDto != null) {
-      ctlList[_TextFormType.workName.pos]!.text = widget.workRespDto!.name;
-      ctlList[_TextFormType.workTime.pos]!.text = widget.workRespDto!.workTime;
+    ctlList[_TextFormType.type.pos]!.text = "판매";
+
+
+    if (widget.sellRespDto != null) {
+      ctlList[_TextFormType.name.pos]!.text = widget.sellRespDto!.name;
       ctlList[_TextFormType.count.pos]!.text =
-          widget.workRespDto!.count.toString();
+          widget.sellRespDto!.count.toString();
       ctlList[_TextFormType.price.pos]!.text =
-          widget.workRespDto!.price.toString();
+          widget.sellRespDto!.price.toString();
+      ctlList[_TextFormType.type.pos]!.text = widget.sellRespDto!.type;
+
+      if (ctlList[_TextFormType.type.pos]!.text == "작업") {
+        isView = false;
+      }
     }
   }
 
@@ -67,16 +77,16 @@ class _WorkItemInDialogState extends State<WorkItemInDialog> {
   Widget build(BuildContext context) {
     return SingleChildScrollView(
         child: Container(
-            child: widget.workRespDto == null ? addItem() : hasItem()));
+            child: widget.sellRespDto == null ? addItem() : hasItem()));
   }
 
   Widget addItem() {
     return Column(
       children: [
-        getDropDown(_TextFormType.workName),
-        getDateSeletor(_TextFormType.workTime),
+        getDropDown(_TextFormType.name),
         getInput(_TextFormType.count),
-        getInput(_TextFormType.price),
+        if(isView) getInput(_TextFormType.price),
+        getTypeDropDown(_TextFormType.type),
         const SizedBox(
           height: 16.0,
         ),
@@ -102,10 +112,10 @@ class _WorkItemInDialogState extends State<WorkItemInDialog> {
   Widget hasItem() {
     return Column(
       children: [
-        getDropDown(_TextFormType.workName),
-        getDateSeletor(_TextFormType.workTime),
+        getDropDown(_TextFormType.name),
         getInput(_TextFormType.count),
-        getInput(_TextFormType.price),
+        if(isView) getInput(_TextFormType.price),
+        getTypeDropDown(_TextFormType.type),
         const SizedBox(
           height: 16.0,
         ),
@@ -165,43 +175,6 @@ class _WorkItemInDialogState extends State<WorkItemInDialog> {
     );
   }
 
-  Widget getDateSeletor(_TextFormType type) {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Padding(
-              padding: const EdgeInsets.only(right: 16.0),
-              child: Text(
-                type.label,
-                textAlign: TextAlign.end,
-                style: StyleConstant.textStyle,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 8,
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    readOnly: true,
-                    controller: ctlList[type.pos],
-                  ),
-                ),
-                IconButton(
-                    onPressed: () => onWorkDateSelect(type),
-                    icon: const Icon(Icons.date_range))
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget getDropDown(_TextFormType type) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
@@ -251,73 +224,126 @@ class _WorkItemInDialogState extends State<WorkItemInDialog> {
     );
   }
 
-  void onWorkDateSelect(_TextFormType type) async {
-    final DateTime? selected = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now().add(const Duration(days: 100)),
+  Widget getTypeDropDown(_TextFormType type) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                type.label,
+                textAlign: TextAlign.end,
+                style: StyleConstant.textStyle,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 8,
+            child: Row(
+              children: [
+                DropdownButton(
+                  value: ctlList[type.pos]!.text == ""
+                      ? null
+                      : ctlList[type.pos]!.text,
+                  icon: const Icon(Icons.density_small),
+                  items: SellConstant.typeList
+                      .map(
+                        (e) => DropdownMenuItem(
+                          value: e,
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(e),
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (value) {
+                    ctlList[type.pos]!.text = value!;
+                    setState(() {
+                      if (value == "작업") {
+                        isView = false;
+                      } else {
+                        isView = true;
+                      }
+                    });
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
-
-    if (selected != null) {
-      setState(() {
-        ctlList[type.pos]!.text = DateFormat("yyyy-MM-dd").format(selected);
-      });
-    }
   }
 
   void addButton() async {
-    int count = ctlList[_TextFormType.count.pos]!.text == ""
-        ? 0
-        : int.parse(ctlList[_TextFormType.count.pos]!.text);
+    typeCheck();
+
+    double count = ctlList[_TextFormType.count.pos]!.text == ""
+        ? 0.0
+        : double.parse(ctlList[_TextFormType.count.pos]!.text);
     int price = ctlList[_TextFormType.price.pos]!.text == ""
         ? 0
         : int.parse(ctlList[_TextFormType.price.pos]!.text);
 
-    WorkInsertReqDto workInsertReqDto = WorkInsertReqDto(
-      ctlList[_TextFormType.workName.pos]!.text,
-      ctlList[_TextFormType.workTime.pos]!.text,
-      widget.buyRespDto.size,
+    ChickenSellInsertReqDto sellInsertReqDto = ChickenSellInsertReqDto(
+      widget.prodRespDto.parts,
+      ctlList[_TextFormType.name.pos]!.text,
       count,
       price,
-      count * price,
-      widget.buyRespDto.createdOn,
-      widget.buyRespDto.id,
+      (count * price) as int,
+      ctlList[_TextFormType.type.pos]!.text,
+      widget.prodRespDto.id,
+      widget.prodRespDto.createdOn,
     );
 
     await GetIt.instance
         .get<APIManager>()
-        .PUT(APIManager.URI_WORK, workInsertReqDto.toJson());
+        .PUT(APIManager.URI_CHICKEN_SELL, sellInsertReqDto.toJson());
 
-    buyUpdateDialogState.setState(() {});
+    prodUpdateDialogState.setState(() {});
   }
 
   void updateButton() async {
-    int count = ctlList[_TextFormType.count.pos]!.text == "" ? 0 : int.parse(ctlList[_TextFormType.count.pos]!.text);
-    int price = ctlList[_TextFormType.price.pos]!.text == "" ? 0 : int.parse(ctlList[_TextFormType.price.pos]!.text);
+    typeCheck();
 
-    WorkUpdateRequestDto workUpdateRequestDto = WorkUpdateRequestDto(
-      widget.workRespDto!.id,
-      ctlList[_TextFormType.workName.pos]!.text,
-      ctlList[_TextFormType.workTime.pos]!.text,
-      widget.buyRespDto.size,
+    double count = ctlList[_TextFormType.count.pos]!.text == ""
+        ? 0.0
+        : double.parse(ctlList[_TextFormType.count.pos]!.text);
+    int price = ctlList[_TextFormType.price.pos]!.text == ""
+        ? 0
+        : int.parse(ctlList[_TextFormType.price.pos]!.text);
+
+    ChickenSellUpdateReqDto sellUpdateReqDto = ChickenSellUpdateReqDto(
+      widget.sellRespDto!.id,
+      ctlList[_TextFormType.name.pos]!.text,
       count,
       price,
-      count * price,
+      (count * price) as int,
+      ctlList[_TextFormType.type.pos]!.text
     );
 
     await GetIt.instance
         .get<APIManager>()
-        .POST(APIManager.URI_WORK, workUpdateRequestDto.toJson());
+        .POST(APIManager.URI_CHICKEN_SELL, sellUpdateReqDto.toJson());
 
-    buyUpdateDialogState.setState(() {});
+    prodUpdateDialogState.setState(() {});
   }
 
   void deleteButton() async {
     await GetIt.instance
         .get<APIManager>()
-        .DELETE(APIManager.URI_WORK, {"id": widget.workRespDto!.id});
+        .DELETE(APIManager.URI_CHICKEN_SELL, {"id": widget.sellRespDto!.id});
 
-    buyUpdateDialogState.setState(() {});
+    prodUpdateDialogState.setState(() {});
+  }
+
+  void typeCheck() {
+    if(ctlList[_TextFormType.type.pos]!.text == "작업") {
+      ctlList[_TextFormType.price.pos]!.text = "0";
+    }
   }
 }

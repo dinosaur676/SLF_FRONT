@@ -11,6 +11,7 @@ class APIManager {
   static const String URI_COMPANY = "/api/company";
   static const String URI_BUY = "/api/buy";
   static const String URI_WORK = "/api/work";
+  static const String URI_DATE = "/api/date";
 
   final String _baseUri = Setting.testURI;
 

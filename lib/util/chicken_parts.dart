@@ -1,4 +1,30 @@
 class ChickenParts {
+  static const List<String> partsList = [
+    WING,
+    WING_BONG,
+    BREAST_SO,
+    BREAST_SO_890,
+    BREAST_SL,
+    BREAST_SL_CUT,
+    BREAST_PO,
+    BREAST_PART,
+    BREAST_SKIN,
+    LEG,
+    MEAT,
+    MEAT_CUT,
+    THIGH,
+    THIGH_MEAT,
+    THIGH_MEAT_CUT,
+    THIGH_RIB,
+    DRUMSTICK,
+    TENDER,
+    TENDER_CUT,
+    SHOULDER,
+    BONE,
+    ETC_MEAT,
+    NECK,
+  ];
+
   //통닭
   static const String CHICKEN = "chicken";
 
@@ -40,15 +66,17 @@ class ChickenParts {
   static const String BUY_COUNT = "buy_count";
   static const String BUY_KG = "buy_kg";
   static const String BUY_TOTAL = "buy_total";
+  static const String BUY_SUB_PRICE_TOTAL = "buy_sub_price_total";
 
   //WORK
   static const String WORK_COUNT = "work_count";
   static const String WORK_TOTAL = "work_total";
   static const String WORKED_CHICKEN_PRICE = "worked_chicken_price";
 
-
   //키
-  static const String SELL_KG = "sell_kg";
-  static const String SELL = "sell";
-  static const String CREATE = "create";
+  static const String SELL_COUNT = "sell_count";
+  static const String SELL_TOTAL = "sell_total";
+  static const String PROD_COUNT = "prod_count";
+  static const String PROD_TOTAL = "prod_total";
+  static const String STOCK = "stock";
 }

@@ -268,6 +268,12 @@ class _BuyAddDialogState extends State<BuyAddDialog> {
   }
 
   void addButton() async {
+    if(ctlList[_TextFormType.size.pos]!.text == "" || ctlList[_TextFormType.buyName.pos]!.text == ""
+        || ctlList[_TextFormType.buyTime.pos]!.text == "" || ctlList[_TextFormType.count.pos]!.text == "") {
+      Fluttertoast.showToast(msg: "값을 입력해주세요.", toastLength: Toast.LENGTH_LONG, gravity: ToastGravity.CENTER);
+      return;
+    }
+
     int size = int.parse(ctlList[_TextFormType.size.pos]!.text);
     double sizePrice = ctlList[_TextFormType.sizePrice.pos]!.text == ""
         ? size / 10
