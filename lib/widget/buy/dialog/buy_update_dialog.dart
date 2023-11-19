@@ -50,6 +50,7 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
   PageController pageController = PageController();
   int currentPage = 0;
   bool floatRound = false;
+  int stockCount = 0;
 
   @override
   void initState() {
@@ -114,6 +115,7 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
         getInput(_TextFormType.size),
         getInput(_TextFormType.sizePrice),
         getInput(_TextFormType.count),
+        getLabel("남은 수량", stockCount.toString())
       ],
     );
   }
@@ -208,6 +210,34 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget getLabel(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                label,
+                textAlign: TextAlign.end,
+                style: StyleConstant.textStyle,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 8,
+            child: Text(
+                value,
+                style: StyleConstant.textStyle
+            ),
+          )
+        ],
+      ),
     );
   }
 
@@ -335,6 +365,12 @@ class BuyUpdateDialogState extends State<BuyUpdateDialog> {
         "${APIManager.URI_WORK}/buy", {"buyId": widget.buyRespDto.id}) as List;
 
     workRespDtoList = workResult.map((e) => WorkRespDto.byResult(e)).toList();
+
+    stockCount = widget.buyRespDto.count;
+
+    for(WorkRespDto workRespDto in workRespDtoList) {
+      stockCount -= workRespDto.count;
+    }
 
     return;
   }

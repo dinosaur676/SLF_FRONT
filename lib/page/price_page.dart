@@ -55,6 +55,8 @@ class _PricePageState extends State<PricePage> {
   String searchName = "";
   double scrollPosition = 0.0;
 
+  PriceDto priceDto = PriceDto("", 0, 0, 0, "");
+
   ScrollController scrollController = ScrollController();
 
   @override
@@ -253,30 +255,18 @@ class _PricePageState extends State<PricePage> {
   }
 
   Widget getInfo() {
-    return FutureBuilder(
-      future: getPriceData(),
-      builder: (context, snapshot) {
-        if(snapshot.connectionState != ConnectionState.done){
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-
-        Map respDto = snapshot.data ?? {};
-
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.grey[300],
-          ),
-          child: Column(
-            children: [
-              getLabelText("시세", respDto["marketPrice"] != null ? respDto["marketPrice"].toString() : "0"),
-              getLabelText("상하차비", respDto["loadingPrice"] != null ? respDto["loadingPrice"].toString() : "0"),
-              getLabelText("제비용", respDto["lotPrice"] != null ? respDto["lotPrice"].toString() : "0"),
-            ],
-          ),
-        );
-      },
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.grey[300],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          getLabelText("시세", priceDto.marketPrice.toString()),
+          getLabelText("상하차비", priceDto.loadingPrice.toString()),
+          getLabelText("제비용", priceDto.lotPrice.toString()),
+        ],
+      ),
     );
   }
 
@@ -337,13 +327,14 @@ class _PricePageState extends State<PricePage> {
     );
   }
 
-  Future<Map> getPriceData() async {
-    Map result = {};
+  Future<void> getPriceData() async {
+    priceDto = PriceDto("", 0, 0, 0, "");
     if(currentSelectDate != "" && selectedCompany != "") {
-      result = await GetIt.instance.get<APIManager>().GET(APIManager.URI_PRICE, PriceSelectRequestDto(selectedCompany, currentSelectDate).toJson());
+      final result = await GetIt.instance.get<APIManager>().GET(APIManager.URI_PRICE, PriceSelectRequestDto(selectedCompany, currentSelectDate).toJson());
+      priceDto = PriceDto.byResult(result);
     }
 
-    return result;
+    return;
   }
 
   Future<void> getCompanyListData() async {
@@ -403,9 +394,11 @@ class _PricePageState extends State<PricePage> {
           {"name": result},
         );
 
-        setState(() {});
+        scrollPosition = scrollController.position.maxScrollExtent;
       }
     }
+
+    setState(() {});
   }
 
   void onSelectedCompany(double pos, String name) {

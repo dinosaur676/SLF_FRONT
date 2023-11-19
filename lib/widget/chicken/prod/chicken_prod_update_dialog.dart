@@ -54,6 +54,7 @@ class ChickenProdUpdateDialogState extends State<ChickenProdUpdateDialog> {
 
   int currentPage = 0;
   PageController pageController = PageController();
+  double stockCount = 0.0;
 
   bool isView = false;
 
@@ -89,7 +90,7 @@ class ChickenProdUpdateDialogState extends State<ChickenProdUpdateDialog> {
             child: Padding(
               padding: const EdgeInsets.all(8.0),
               child: Column(mainAxisSize: MainAxisSize.min, children: [
-                buyBody(),
+                prodBody(),
                 Expanded(child: sellBody()),
                 buttons()
               ]),
@@ -111,17 +112,23 @@ class ChickenProdUpdateDialogState extends State<ChickenProdUpdateDialog> {
 
     sellRespDtoList = result.map((e) => ChickenSellRespDto.byResult(e)).toList();
 
+    stockCount = widget.dto.count;
+
+    for(ChickenSellRespDto sellRespDto in sellRespDtoList) {
+      stockCount -= sellRespDto.count;
+    }
 
     return;
   }
 
-  Widget buyBody() {
+  Widget prodBody() {
     return Column(
       children: [
         getDropDown(_TextFormType.prodName),
         getInput(_TextFormType.count),
         if(isView) getInput(_TextFormType.price),
         getTypeDropDown(_TextFormType.type),
+        getLabel("남은 수량", stockCount.toString())
       ],
     );
   }
@@ -216,6 +223,34 @@ class ChickenProdUpdateDialogState extends State<ChickenProdUpdateDialog> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget getLabel(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.all(8.0),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Text(
+                label,
+                textAlign: TextAlign.end,
+                style: StyleConstant.textStyle,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 8,
+            child: Text(
+                value,
+                style: StyleConstant.textStyle
+            ),
+          )
+        ],
+      ),
     );
   }
 

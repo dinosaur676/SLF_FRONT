@@ -383,6 +383,7 @@ class _Top extends StatelessWidget {
             child: Row(
               children: [
                 Expanded(
+                  flex: 25,
                   child: Row(
                     children: [
                       SelectionArea(
@@ -398,6 +399,7 @@ class _Top extends StatelessWidget {
                   ),
                 ),
                 Expanded(
+                  flex: 75,
                   child: IntrinsicHeight(
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.end,

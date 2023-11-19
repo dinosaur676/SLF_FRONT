@@ -33,11 +33,25 @@ class TableManager extends ChangeNotifier{
     return sum;
   }
 
+  int getProdTotal() {
+    int sum = 0;
+
+    for(String parts in ChickenParts.partsList) {
+      if(_tableStockMap[parts + ChickenParts.PROD_TOTAL] == null) {
+        continue;
+      }
+      sum += _tableStockMap[parts + ChickenParts.PROD_TOTAL] as int;
+    }
+
+    return sum;
+  }
+
   int getProfits() {
     int sellTotal = getPartsTotal();
     int buyTotal = getWorkedPrice();
+    int prodTotal = getProdTotal();
 
-    return sellTotal - buyTotal;
+    return sellTotal - (buyTotal + prodTotal);
   }
 
 

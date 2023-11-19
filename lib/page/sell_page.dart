@@ -106,7 +106,7 @@ class _Bottom extends StatelessWidget {
         const Divider(height: 2, color: Colors.black,),
         getRow("판매 합계 금액", "${_chickenManager.getPartsTotal()}"),
         const Divider(thickness: 1,),
-        getRow("구매(작업된 닭) 및 작업비 합계 금액", "${_chickenManager.getWorkedPrice()}"),
+        getRow("구매(작업된 닭) 및 작업비 합계 금액", "${_chickenManager.getWorkedPrice() + _chickenManager.getProdTotal()}"),
         const Divider(thickness: 1,),
         getRow("수익금", "${context.watch<TableManager>().getProfits()}"),
         const Divider(height: 2,),

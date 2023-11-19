@@ -13,7 +13,7 @@ class APIManager {
   static const String URI_WORK = "/api/work";
   static const String URI_DATE = "/api/date";
 
-  final String _baseUri = Setting.testURI;
+  final String _baseUri = Setting.prodURI;
 
   Future<dynamic> GET(String uri, Map? param) async {
     String paramString = "";

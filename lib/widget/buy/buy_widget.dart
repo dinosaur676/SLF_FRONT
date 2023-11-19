@@ -359,22 +359,22 @@ class _Top extends StatelessWidget {
                   flex: 2,
                   child: Row(
                     children: [
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.lightGreen),
-                        onPressed: onFinish,
-                        child: const Text(
-                          "적용",
-                          style: TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w500,
-                            color: Colors.white,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(
-                        width: 20,
-                      ),
+                      // ElevatedButton(
+                      //   style: ElevatedButton.styleFrom(
+                      //       backgroundColor: Colors.lightGreen),
+                      //   onPressed: onFinish,
+                      //   child: const Text(
+                      //     "적용",
+                      //     style: TextStyle(
+                      //       fontSize: 28,
+                      //       fontWeight: FontWeight.w500,
+                      //       color: Colors.white,
+                      //     ),
+                      //   ),
+                      // ),
+                      // const SizedBox(
+                      //   width: 20,
+                      // ),
                       ElevatedButton(
                         style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.lightGreen),
